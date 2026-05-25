@@ -1,171 +1,168 @@
-import { useContext, useEffect, useState } from "react";
-import { Alert, Button, Table, Container, Card } from "react-bootstrap";
-import MySpinner from "../../components/MySpinner";
-import Apis, { authApis, endpoints } from "../../configs/Apis";
+import { useState, useEffect } from "react";
+import { Container, Table, Button, Form, Row, Col, Card, Badge } from "react-bootstrap";
 import { useNavigate } from "react-router-dom";
-import { MyUserContext } from "../../configs/Contexts";
+import MySpinner from "../../components/MySpinner";
+import { toast } from "react-toastify";
+// Khi kết nối Backend thật sẽ dùng:
+// import Apis, { authApis, endpoints } from "../../configs/Apis";
 
 const DocumentManagement = () => {
-    const [user] = useContext(MyUserContext);
     const [documents, setDocuments] = useState([]);
+    const [categories, setCategories] = useState([]);
     const [loading, setLoading] = useState(false);
-    const [err, setErr] = useState("");
-    const [success, setSuccess] = useState("");
+    
+    // State lưu chuyên ngành đang được chọn để lọc (Mặc định "" là hiển thị tất cả)
+    const [selectedCateId, setSelectedCateId] = useState("");
     const nav = useNavigate();
 
-    // Hàm tải danh sách tài liệu dành cho trang quản lý
-    const loadDocuments = async () => {
-        try {
-            setLoading(true);
-            setErr("");
-
-            // --- CODE API THẬT (Tạm ẩn để phục vụ test UI) ---
-            /*
-            let res = await Apis.get(endpoints['documents']);
-            setDocuments(res.data);
-            */
-
-            // === BẮT ĐẦU: MOCK DATA ĐỂ TEST GIAO DIỆN ===
-            await new Promise(resolve => setTimeout(resolve, 600)); // Giả lập mạng load
-            const mockData = [
-                { id: 1, name: "Giáo trình Lập trình Java", author: "Nguyễn Văn A", publishYear: 2023, price: 0 },
-                { id: 2, name: "Cấu trúc dữ liệu và Giải thuật", author: "Trần Thị B", publishYear: 2022, price: 50000 },
-                { id: 3, name: "Mạng máy tính cơ bản", author: "Lê Văn C", publishYear: 2021, price: 0 },
-                { id: 4, name: "Phát triển Web với React", author: "Phạm D", publishYear: 2024, price: 100000 }
-            ];
-            setDocuments(mockData);
-            // === KẾT THÚC: MOCK DATA ===
-
-        } catch (ex) {
-            console.error(ex);
-            setErr("Không thể tải danh sách tài liệu từ hệ thống!");
-        } finally {
-            setLoading(false);
-        }
-    };
-
     useEffect(() => {
-        if (user && (user.role === "LIBRARIAN" || user.role === "ADMIN")) {
-            loadDocuments();
-        }
-    }, [user]);
-
-    // Kỹ thuật xử lý Xóa tài liệu dùng window.confirm giống bài của thầy
-    const deleteDocument = async (id, name) => {
-        if (window.confirm(`Bạn có chắc chắn muốn xóa tài liệu "${name}" không?`) === true) {
+        const fetchData = async () => {
             try {
                 setLoading(true);
-                setSuccess("");
-                setErr("");
+                await new Promise(resolve => setTimeout(resolve, 600)); // Giả lập chờ mạng
 
-                // --- CODE API THẬT (Tạm ẩn) ---
-                /*
-                // Gọi đến API secure xóa tài liệu (Sử dụng cấu trúc template string của axios)
-                let res = await authApis().delete(`${endpoints['documents']}/${id}`);
-                if (res.status === 204 || res.status === 200) {
-                    setDocuments(documents.filter(d => d.id !== id));
-                    setSuccess("Xóa tài liệu thành công!");
-                }
-                */
+                // 1. Dữ liệu giả định Chuyên ngành (Khớp với Header)
+                setCategories([
+                    { id: 1, name: "Công nghệ thông tin" },
+                    { id: 2, name: "Kinh tế học" },
+                    { id: 3, name: "Khoa học xã hội" }
+                ]);
 
-                // === BẮT ĐẦU: GIẢ LẬP XÓA TRÊN UI ===
-                await new Promise(resolve => setTimeout(resolve, 500));
-                setDocuments(documents.filter(d => d.id !== id)); // Lọc bỏ item vừa xóa khỏi danh sách hiện tại
-                setSuccess(`Đã xóa thành công tài liệu: ${name} (Dữ liệu giả lập)`);
-                // === KẾT THÚC: GIẢ LẬP XÓA ===
+                // 2. Dữ liệu giả định Học liệu (Khớp với Home)
+                setDocuments([
+                    { id: 1, name: "Giáo trình Lập trình Java", author: "Nguyễn Văn A", publishYear: 2023, price: 0, categoryId: 1 },
+                    { id: 2, name: "Cấu trúc dữ liệu và Giải thuật", author: "Trần Thị B", publishYear: 2022, price: 50000, categoryId: 1 },
+                    { id: 3, name: "Mạng máy tính cơ bản", author: "Lê Văn C", publishYear: 2021, price: 0, categoryId: 1 },
+                    { id: 4, name: "Nhập môn Kinh tế học", author: "Phạm D", publishYear: 2023, price: 100000, categoryId: 2 },
+                    { id: 5, name: "Phát triển Web với React", author: "Hoàng E", publishYear: 2024, price: 0, categoryId: 1 }
+                ]);
 
-            } catch (ex) {
-                console.error(ex);
-                setErr("Có lỗi xảy ra khi thực hiện xóa tài liệu!");
+            } catch (error) {
+                console.error(error);
+                toast.error("Không thể tải dữ liệu kho sách!");
             } finally {
                 setLoading(false);
             }
+        };
+
+        fetchData();
+    }, []);
+
+    // Xử lý Xóa học liệu
+    const handleDelete = async (id, docName) => {
+        if (window.confirm(`Bạn có chắc chắn muốn xóa tài liệu "${docName}" khỏi kho không?`)) {
+            // --- CODE API XÓA THẬT ---
+            // await authApis().delete(endpoints['delete-document'](id));
+            
+            setDocuments(documents.filter(doc => doc.id !== id));
+            toast.success("Đã xóa tài liệu thành công!");
         }
     };
 
-    // Chặn quyền truy cập (Role Guard) giống trang AddDocument
-    if (user === null || (user.role !== "LIBRARIAN" && user.role !== "ADMIN")) {
-        return (
-            <Container className="mt-5 text-center">
-                <Alert variant="danger">
-                    <Alert.Heading>Quyền truy cập bị từ chối</Alert.Heading>
-                    <p>Chỉ có Thủ thư hoặc Quản trị viên mới được phép vào phân hệ này.</p>
-                    <Button variant="outline-danger" onClick={() => nav("/")}>Quay về trang chủ</Button>
-                </Alert>
-            </Container>
-        );
-    }
+    // LOGIC LỌC: Nếu selectedCateId có giá trị thì lọc theo chuyên ngành, ngược lại lấy tất cả
+    const filteredDocuments = selectedCateId 
+        ? documents.filter(doc => doc.categoryId === parseInt(selectedCateId))
+        : documents;
+
+    if (loading) return <div className="text-center mt-5"><MySpinner /></div>;
 
     return (
-        <Container className="mt-4">
-            <Card className="shadow-sm border-0">
-                <Card.Header className="bg-success text-white d-flex justify-content-between align-items-center py-3">
-                    <h4 className="mb-0">HỆ THỐNG QUẢN LÝ HỌC LIỆU</h4>
-                    <Button variant="light" className="fw-bold text-success shadow-sm" onClick={() => nav("/admin/add-document")}>
-                        ➕ Thêm tài liệu mới
-                    </Button>
-                </Card.Header>
-                <Card.Body className="p-4">
-                    {err && <Alert variant="danger">{err}</Alert>}
-                    {success && <Alert variant="success">{success}</Alert>}
+        <Container className="mt-4 mb-5" style={{ maxWidth: "1200px" }}>
+            <div className="d-flex justify-content-between align-items-center border-bottom pb-2 mb-4">
+                <h2 className="text-success mb-0">📚 QUẢN LÝ KHO HỌC LIỆU SỐ</h2>
+                <Button variant="success" className="fw-bold" onClick={() => nav("/admin/add-document")}>
+                    ➕ Thêm tài liệu mới
+                </Button>
+            </div>
 
-                    {loading && documents.length === 0 ? (
-                        <div className="text-center py-4"><MySpinner /></div>
-                    ) : documents.length === 0 ? (
-                        <Alert variant="info" className="text-center">Hiện chưa có tài liệu nào trong hệ thống.</Alert>
-                    ) : (
-                        <Table striped bordered hover responsive className="align-middle">
-                            <thead className="table-light">
-                                <tr>
-                                    <th style={{ width: "80px" }}>Mã số</th>
-                                    <th>Tên tài liệu / Học liệu</th>
-                                    <th>Tác giả</th>
-                                    <th style={{ width: "120px" }}>Năm XB</th>
-                                    <th>Phí mượn</th>
-                                    <th style={{ width: "160px" }} className="text-center">Hành động</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {documents.map(d => (
-                                    <tr key={d.id}>
-                                        <td className="fw-bold">#{d.id}</td>
-                                        <td className="fw-bold text-primary">{d.name}</td>
-                                        <td>{d.author}</td>
-                                        <td>{d.publishYear}</td>
-                                        <td>
-                                            {d.price === 0 ? (
-                                                <span className="text-success fw-semibold">Miễn phí</span>
-                                            ) : (
-                                                <span className="text-danger fw-semibold">{d.price.toLocaleString()} VNĐ</span>
-                                            )}
-                                        </td>
-                                        <td className="text-center">
-                                            {/* Nút Sửa: Điều hướng sang trang sửa kèm theo mã ID tài liệu */}
-                                            <Button 
-                                                variant="outline-warning" 
-                                                size="sm" 
-                                                className="me-2 fw-semibold"
-                                                onClick={() => nav(`/admin/edit-document/${d.id}`)}
-                                            >
-                                                Sửa
-                                            </Button>
-                                            {/* Nút Xóa: Kích hoạt hàm xác nhận xóa */}
-                                            <Button 
-                                                variant="outline-danger" 
-                                                size="sm"
-                                                className="fw-semibold"
-                                                onClick={() => deleteDocument(d.id, d.name)}
-                                            >
-                                                Xóa
-                                            </Button>
-                                        </td>
-                                    </tr>
+            {/* THANH BỘ LỌC THEO CHUYÊN NGÀNH */}
+            <Card className="mb-4 bg-light border shadow-sm">
+                <Card.Body className="p-3">
+                    <Form.Group as={Row} className="align-items-center mb-0">
+                        <Form.Label column sm={3} md={2} className="fw-bold text-dark text-nowrap">
+                            Lọc theo ngành:
+                        </Form.Label>
+                        <Col sm={9} md={5}>
+                            <Form.Select 
+                                value={selectedCateId} 
+                                onChange={(e) => setSelectedCateId(e.target.value)}
+                                className="border-success"
+                            >
+                                <option value="">—— Hiển thị tất cả chuyên ngành ——</option>
+                                {categories.map(cat => (
+                                    <option key={cat.id} value={cat.id}>{cat.name}</option>
                                 ))}
-                            </tbody>
-                        </Table>
-                    )}
+                            </Form.Select>
+                        </Col>
+                        {selectedCateId && (
+                            <Col sm={12} md={5} className="mt-2 mt-md-0">
+                                <Badge bg="info" className="p-2 fs-6">
+                                    Tìm thấy {filteredDocuments.length} tài liệu phù hợp
+                                </Badge>
+                            </Col>
+                        )}
+                    </Form.Group>
                 </Card.Body>
             </Card>
+
+            {/* BẢNG DANH SÁCH TÀI LIỆU SAU KHI LỌC */}
+            <div className="shadow-sm rounded border overflow-hidden">
+                <Table striped hover responsive className="mb-0 bg-white">
+                    <thead className="table-success">
+                        <tr>
+                            <th className="text-center" style={{ width: "6%" }}>STT</th>
+                            <th style={{ width: "35%" }}>Tên tài liệu</th>
+                            <th style={{ width: "20%" }}>Tác giả</th>
+                            <th className="text-center" style={{ width: "12%" }}>Năm XB</th>
+                            <th style={{ width: "12%" }}>Phí mượn</th>
+                            <th className="text-center" style={{ width: "15%" }}>Hành động</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {filteredDocuments.length === 0 ? (
+                            <tr>
+                                <td colSpan="6" className="text-center py-4 text-muted">
+                                    Không có tài liệu nào thuộc chuyên ngành này.
+                                         </td>
+                            </tr>
+                        ) : (
+                            filteredDocuments.map((doc, index) => (
+                                <tr key={doc.id}>
+                                    <td className="text-center align-middle">{index + 1}</td>
+                                    <td className="fw-bold text-primary align-middle">{doc.name}</td>
+                                    <td className="align-middle text-dark">{doc.author}</td>
+                                    <td className="text-center align-middle">{doc.publishYear}</td>
+                                    <td className="align-middle fw-semibold">
+                                        {doc.price === 0 ? (
+                                            <span className="text-success">Miễn phí</span>
+                                        ) : (
+                                            <span className="text-danger">{doc.price.toLocaleString()} đ</span>
+                                        )}
+                                    </td>
+                                    <td className="text-center align-middle">
+                                        <Button 
+                                            variant="outline-warning" 
+                                            size="sm" 
+                                            className="me-2 fw-semibold"
+                                            onClick={() => nav(`/admin/edit-document/${doc.id}`)}
+                                        >
+                                            Sửa
+                                        </Button>
+                                        <Button 
+                                            variant="outline-danger" 
+                                            size="sm" 
+                                            className="fw-semibold"
+                                            onClick={() => handleDelete(doc.id, doc.name)}
+                                        >
+                                            Xóa
+                                        </Button>
+                                    </td>
+                                </tr>
+                            ))
+                        )}
+                    </tbody>
+                </Table>
+            </div>
         </Container>
     );
 };

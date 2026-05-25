@@ -3,10 +3,12 @@ import { Button, Col, Form, Image, ListGroup, Row, Badge, Alert } from "react-bo
 import { useNavigate, useParams, Link } from "react-router-dom";
 import Apis, { authApis, endpoints } from "../../configs/Apis";
 import moment from "moment";
-import 'moment/locale/vi'; // Format thời gian theo tiếng Việt
+import 'moment/locale/vi'; 
 import { MyCartContext, MyUserContext } from "../../configs/Contexts";
 import cookies from 'react-cookies';
 import MySpinner from "../../components/MySpinner";
+import { toast } from 'react-toastify';
+import UserAccessModal from "../../components/UserAccessModal"; 
 
 const DocumentDetails = () => {
     const { docId } = useParams();
@@ -15,49 +17,43 @@ const DocumentDetails = () => {
     const [loading, setLoading] = useState(false);
     
     const [user, ] = useContext(MyUserContext);
-    const [, dispatchCart] = useContext(MyCartContext); // Lấy context để làm nút Mượn sách
+    const [, dispatchCart] = useContext(MyCartContext); 
     
     const nav = useNavigate();
     const [reviewContent, setReviewContent] = useState("");
+    const [rating, setRating] = useState(5); 
+
+    const [isBorrowed, setIsBorrowed] = useState(false); 
+    const canRead = document !== null && (document.price === 0 || isBorrowed);
+
+    // Các State quản lý mở đóng Modal chọn gói
+    const [showAccessModal, setShowAccessModal] = useState(false);
+    const [selectedDoc, setSelectedDoc] = useState(null);
 
     const loadDocumentDetails = async () => {
         try {
             setLoading(true);
-
-            // --- CODE API THẬT (Tạm ẩn) ---
-            /*
-            let resDoc = await Apis.get(endpoints['document-details'](docId));
-            setDocument(resDoc.data);
-            
-            let resRev = await Apis.get(endpoints['reviews'](docId));
-            setReviews(resRev.data);
-            */
-
-            // === MOCK DATA ĐỂ TEST GIAO DIỆN ===
             await new Promise(resolve => setTimeout(resolve, 600));
             
-            // Giả lập dữ liệu sách
             setDocument({
                 id: docId,
                 name: docId === "1" ? "Giáo trình Lập trình Java" : "Tài liệu chuyên ngành IT",
                 author: "Nguyễn Văn A",
                 publishYear: 2023,
                 price: docId === "1" ? 0 : 50000,
-                description: "Tài liệu này cung cấp các kiến thức nền tảng và nâng cao, rất phù hợp cho sinh viên và giảng viên tham khảo trong quá trình học tập và nghiên cứu. Nội dung được biên soạn sát với thực tế doanh nghiệp.",
+                description: "Học liệu số này cung cấp các kiến thức nền tảng và nâng cao, rất phù hợp cho sinh viên và giảng viên tham khảo trong quá trình học tập và nghiên cứu trực tuyến. Nội dung được biên soạn sát với thực tế doanh nghiệp.",
                 image: `https://placehold.co/400x600/e3f2fd/0d47a1?text=Book+${docId}`
             });
 
-            // Giả lập dữ liệu bình luận
             setReviews([
                 {
                     id: 1,
-                    content: "Sách rất hay, nội dung chi tiết và dễ hiểu!",
-                    createdDate: new Date(Date.now() - 86400000).toISOString(), // 1 ngày trước
+                    content: "Học liệu rất hay, nội dung chi tiết và dễ hiểu!",
+                    rating: 5, 
+                    createdDate: new Date(Date.now() - 86400000).toISOString(),
                     user: { username: "sinhvien_01", avatar: "https://placehold.co/100x100/fce4ec/880e4f?text=SV" }
                 }
             ]);
-            // === KẾT THÚC MOCK DATA ===
-
         } catch (ex) {
             console.error(ex);
         } finally {
@@ -65,58 +61,47 @@ const DocumentDetails = () => {
         }
     }
 
-    // Hàm thêm bình luận
     const addReview = async () => {
         if (!reviewContent.trim()) return;
-
         try {
-            // --- CODE API THẬT ---
-            /*
-            let res = await authApis().post(endpoints['add-review'](docId), {
-                'content': reviewContent
-            });
-            if (res.status === 201) {
-                setReviews([res.data, ...reviews]);
-                setReviewContent("");
-            }
-            */
-
-            // === MOCK DATA THÊM BÌNH LUẬN ===
             const newMockReview = {
                 id: Date.now(),
                 content: reviewContent,
+                rating: rating,
                 createdDate: new Date().toISOString(),
                 user: { username: user.username, avatar: user.avatar }
             };
-            setReviews([newMockReview, ...reviews]); // Đẩy bình luận mới lên đầu
-            setReviewContent(""); // Xóa trắng ô nhập
-            // === KẾT THÚC MOCK DATA ===
-
+            setReviews([newMockReview, ...reviews]); 
+            setReviewContent(""); 
+            toast.success("Gửi nhận xét học liệu thành công!");
         } catch (ex) {
             console.error(ex);
-            alert("Lỗi thêm bình luận!");
+            toast.error("Lỗi thêm bình luận!");
         }
     }
 
-    // Tích hợp hàm mượn sách trực tiếp ở trang chi tiết
-    const borrow = (doc) => {
+    const handleAccessClick = (doc) => {
+        setSelectedDoc(doc);
+        setShowAccessModal(true);
+    };
+
+    const handleConfirmPackage = (packageData) => {
         let cart = cookies.load('cart') || null;
         if (cart === null) cart = {};
 
-        if (doc.id in cart) {
-            cart[doc.id]['quantity']++;
-        } else {
-            cart[doc.id] = {
-                'id': doc.id,
-                'name': doc.name,
-                'price': doc.price,
-                'quantity': 1
-            }
+        cart[packageData.documentId] = {
+            'id': packageData.documentId,
+            'name': packageData.documentName,
+            'price': packageData.price,
+            'quantity': 1,
+            'startDate': packageData.startDate,
+            'durationDays': packageData.durationDays,
+            'expiryDate': packageData.expiryDate
         }
         cookies.save('cart', cart);
         dispatchCart({ "type": "UPDATE" });
-        alert(`Đã thêm "${doc.name}" vào phiếu mượn!`);
-    }
+        toast.success(`Đã thêm yêu cầu gia hạn vào phiếu đăng ký!`);
+    };
 
     useEffect(() => {
         loadDocumentDetails();
@@ -126,7 +111,7 @@ const DocumentDetails = () => {
 
     return (
         <div className="mx-auto mt-3" style={{ maxWidth: "1000px" }}>
-            <h2 className="text-success mb-4 border-bottom pb-2">CHI TIẾT TÀI LIỆU</h2>
+            <h2 className="text-success mb-4 border-bottom pb-2">CHI TIẾT HỌC LIỆU</h2>
 
             {document && (
                 <Row className="mb-5 shadow-sm p-4 bg-white rounded border">
@@ -135,43 +120,64 @@ const DocumentDetails = () => {
                     </Col>
                     <Col md={8} xs={12}>
                         <h2 className="text-primary fw-bold">{document.name}</h2>
-                        
                         <div className="mt-3 mb-3 text-muted">
                             <p className="mb-1"><i className="fw-bold">Tác giả:</i> {document.author}</p>
                             <p className="mb-1"><i className="fw-bold">Năm xuất bản:</i> {document.publishYear}</p>
                         </div>
-
                         <h4 className="mb-3">
-                            {document.price === 0 ? <Badge bg="success">Miễn phí mượn</Badge> : <Badge bg="danger">Phí mượn: {document.price.toLocaleString()} VNĐ</Badge>}
+                            {document.price === 0 ? <Badge bg="success">Miễn phí truy cập</Badge> : <Badge bg="danger">Phí bản quyền: {document.price.toLocaleString()} VNĐ</Badge>}
                         </h4>
-
                         <h5 className="fw-bold mt-4">Tóm tắt nội dung:</h5>
                         <p className="text-justify" style={{ lineHeight: "1.6" }}>{document.description}</p>
                         
                         <div className="mt-4">
-                            <Button variant="warning" size="lg" className="fw-bold px-4" onClick={() => borrow(document)}>
-                                ➕ Thêm vào Phiếu mượn
-                            </Button>
+                            {canRead ? (
+                                <Button variant="success" size="lg" className="fw-bold px-4 me-2" href={document.filePath} target="_blank">
+                                    📖 Truy cập học liệu Online
+                                </Button>
+                            ) : document.price === 0 ? (
+                                <Button variant="warning" size="lg" className="fw-bold px-4" onClick={() => handleAccessClick(document)}>
+                                    ⏳ Gia hạn mượn
+                                </Button>
+                            ) : (
+                                <Button variant="danger" size="lg" className="fw-bold px-4 text-white" onClick={() => handleAccessClick(document)}>
+                                    🔑 Gia hạn quyền truy cập
+                                </Button>
+                            )}
                         </div>
                     </Col>
                 </Row>
             )}
 
-            <h4 className="text-info border-bottom pb-2 mt-5">NHẬN XÉT & ĐÁNH GIÁ</h4>
+            <h4 className="text-info border-bottom pb-2 mt-5">NHẬN XÉT & ĐÁNH GIÁ CỘNG ĐỒNG</h4>
 
             {user === null ? (
                 <Alert variant="warning" className="mt-3">
-                    Vui lòng <Link to={`/login?next=/documents/${docId}`} className="alert-link">đăng nhập</Link> để để lại nhận xét cho tài liệu này!
+                    Vui lòng <Link to={`/login?next=/documents/${docId}`} className="alert-link">đăng nhập</Link> để để lại nhận xét cho học liệu này!
                 </Alert>
             ) : (
                 <div className="mt-3 mb-4 p-3 bg-light rounded border">
                     <div className="d-flex align-items-start">
                         <Image src={user.avatar || "https://placehold.co/50x50"} roundedCircle width={50} height={50} className="me-3 border" style={{objectFit: "cover"}} />
                         <div className="w-100">
+                            <Form.Group className="mb-3">
+                                <Form.Label className="fw-bold">Đánh giá của bạn:</Form.Label>
+                                <div className="fs-4">
+                                    {[1, 2, 3, 4, 5].map((star) => (
+                                        <i
+                                            key={star}
+                                            className={star <= rating ? "fa-solid fa-star text-warning me-2" : "fa-regular fa-star text-secondary me-2"}
+                                            style={{ cursor: "pointer" }}
+                                            onClick={() => setRating(star)}
+                                        ></i>
+                                    ))}
+                                    <span className="fs-6 text-muted ms-2">({rating} sao)</span>
+                                </div>
+                            </Form.Group>
                             <Form.Control 
                                 as="textarea" 
                                 rows={2} 
-                                placeholder="Chia sẻ cảm nghĩ của bạn về tài liệu này..." 
+                                placeholder="Chia sẻ cảm nghĩ của bạn về học liệu này..." 
                                 value={reviewContent} 
                                 onChange={e => setReviewContent(e.target.value)} 
                             />
@@ -193,6 +199,11 @@ const DocumentDetails = () => {
                                 </Col>
                                 <Col md={11} xs={10}>
                                     <h6 className="fw-bold mb-1 text-primary">{c.user?.username}</h6>
+                                    <div className="mb-1">
+                                        {[1, 2, 3, 4, 5].map(star => (
+                                            <i key={star} className={star <= c.rating ? "fa-solid fa-star text-warning" : "fa-regular fa-star text-secondary"} style={{ fontSize: "12px", marginRight: "2px" }}></i>
+                                        ))}
+                                    </div> 
                                     <p className="mb-1">{c.content}</p>
                                     <small className="text-muted"><em>{moment(c.createdDate).fromNow()}</em></small>
                                 </Col>
@@ -201,6 +212,13 @@ const DocumentDetails = () => {
                     ))
                 }
             </ListGroup>
+
+            <UserAccessModal 
+                show={showAccessModal} 
+                onHide={() => setShowAccessModal(false)} 
+                document={selectedDoc} 
+                onConfirm={handleConfirmPackage} 
+            />
         </div>
     );
 }

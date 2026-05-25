@@ -43,10 +43,25 @@ const Register = () => {
     const nav = useNavigate();
 
     const validate = () => {
-        if (user.password !== user.confirm) {
-            setErr('Mật khẩu không khớp!');
+        // Kiểm tra số điện thoại chuẩn định dạng mạng di động (10 số)
+        const phoneRegex = /^(0[3|5|7|8|9])+([0-9]{8})$/;
+        if (!phoneRegex.test(user.phone)) {
+            setErr('Số điện thoại không hợp lệ! Vui lòng nhập đúng 10 số bắt đầu bằng 03, 05, 07, 08 hoặc 09.');
             return false;
         }
+
+        // Kiểm tra độ dài mật khẩu
+        if (!user.password || user.password.length < 6) {
+            setErr('Mật khẩu quá ngắn! Vui lòng nhập ít nhất 6 ký tự.');
+            return false;
+        }
+
+        // Kiểm tra mật khẩu khớp nhau
+        if (user.password !== user.confirm) {
+            setErr('Mật khẩu xác nhận không khớp!');
+            return false;
+        }
+
         return true;
     }
 
