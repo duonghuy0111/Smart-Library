@@ -82,11 +82,7 @@ const Register = () => {
 
             try {
                 setLoading(true);
-                const res = await Apis.post(endpoints['register'], form, {
-                    headers: {
-                        'Content-Type': 'multipart/form-data'
-                    }
-                });
+                const res = await Apis.post(endpoints['register'], form);
                 if (res.status === 201)
                     nav('/login');
             } catch (ex) {

@@ -31,49 +31,44 @@ const Login = () => {
 
     const login = async (e) => {
         e.preventDefault();
-        setErr(""); // Reset lỗi cũ
+        setErr(""); 
 
         if (validate()) {
             try {
                 setLoading(true);
 
-                // --- 1. CODE GỌI API THẬT ---
-                /*
-                let res = await Apis.post(endpoints['login'], {...user});
-                cookies.save('token', res.data.token);
+                // 1. Gọi API lấy Token thật
+                let res = await Apis.post(endpoints['login'], {
+                    username: user.username,
+                    password: user.password
+                });
+                
+                const token = res.data.token || res.data; 
+                cookies.save('token', token, { path: '/' });
 
-                let p = await authApis().get(endpoints['profile']);
-                cookies.save('user', p.data);
-
+                // 👉 2. SỬA ĐOẠN NÀY: Dùng thẳng biến 'token' trực tiếp thay vì gọi authApis()
+                const endpointProfile = endpoints['current-user'];
+                let userRes = await Apis.get(endpointProfile, {
+                    headers: {
+                        "Authorization": `Bearer ${token}`
+                    }
+                });
+                
+                // 3. Lưu user vào Cookie và Context
+                cookies.save('user', userRes.data, { path: '/' });
                 dispatch({
                     "type": "LOGIN",
-                    "payload": p.data
+                    "payload": userRes.data
                 });
-                */
 
-                // --- 2. CODE GIẢ LẬP ĐỂ TEST UI (Dùng tạm khi chưa có Backend) ---
-                await new Promise(resolve => setTimeout(resolve, 800)); 
-                if (user.username === "admin" && user.password === "123") {
-                    const mockUser = { id: 1, username: "admin_thuthu", avatar: "https://placehold.co/100x100?text=Avatar", role: "LIBRARIAN" };
-                    cookies.save('token', "fake-jwt-token");
-                    cookies.save('user', mockUser);
-                    dispatch({ "type": "LOGIN", "payload": mockUser });
-                } else {
-                    setErr("Tài khoản hoặc mật khẩu không đúng! (Gợi ý test: admin/123)");
-                    return; // Dừng việc chuyển trang
-                }
-                // --- KẾT THÚC GIẢ LẬP ---
-
-                let next = q.get('next')
-                if (next)
-                    nav(next);
-                else
-                    nav('/');
+                // Chuyển trang
+                let next = q.get('next');
+                if (next) nav(next);
+                else nav('/');
 
             } catch (ex) {
                 console.error(ex);
-                // Cải tiến: Thông báo lỗi ra màn hình thay vì chỉ log console
-                setErr("Đăng nhập thất bại. Vui lòng kiểm tra lại thông tin!");
+                setErr("Tài khoản hoặc mật khẩu không chính xác!");
             } finally {
                 setLoading(false);
             }

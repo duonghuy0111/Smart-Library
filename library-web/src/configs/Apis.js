@@ -1,30 +1,41 @@
 import axios from "axios";
 import cookies from 'react-cookies';
 
+// LƯU Ý: Nếu backend của bạn chạy thẳng ở thư mục gốc (không qua war file), hãy đổi thành http://localhost:8080
+const SERVER = "http://localhost:8080/SpringLibraryApp"; 
+
 export const endpoints = {
-    // API Public
-    'categories': '/categories',
-    'documents': '/documents',
+    'categories': '/categories/', 
+    'delete-category': (id) => `/categories/${id}`, // Bổ sung API Xóa danh mục
+    'documents': '/documents/', 
     'document-details': (docId) => `/documents/${docId}`,
-    'reviews': (docId) => `/documents/${docId}/reviews`,
+    'delete-document': (id) => `/documents/${id}`, // Bổ sung API Xóa
+    'update-document': (id) => `/documents/${id}`, // Bổ sung API Cập nhật (POST theo backend của bạn)
+    'reviews': (docId) => `/reviews/document/${docId}`, 
+    'register': '/users/register',
+    'login': '/users/login', 
+    'current-user': '/users/current-user', 
+    'add-review': '/reviews/', 
+    'transactions': '/transactions/', 
     
-    // API User (Y chang mẫu của thầy)
-    'register': '/users',
-    'login': '/login',
-    
-    // API Cần bảo mật (Có chữ secure giống thầy)
-    'current-user': '/secure/profile',
-    'add-review': (docId) => `/secure/documents/${docId}/reviews`,
-    'borrow-document': (docId) => `/secure/borrows/${docId}`,
-    'my-borrows': '/secure/borrows/my',
+    'borrows': '/borrows/', 
+    'my-borrows': '/borrows/my-borrows',
+    'all-borrows': '/borrows/all', // Bổ sung API lấy toàn bộ phiếu mượn cho Thủ thư
+    'extend-borrow': (detailId) => `/borrows/extend/${detailId}`, // Bổ sung API gia hạn
+    'revoke-borrow': (detailId) => `/borrows/revoke/${detailId}`,
+
+    'stats-kpis': '/stats/kpis', 
+    'stats-category': '/stats/category-stats',
+    'stats-revenue': (year) => `/stats/revenue?year=${year}`,
+    'stats-roi': '/stats/roi',
+    'stats-usage': (mode, year) => `/stats/usage?viewMode=${mode}&year=${year}`,
+
+    'create-payment': '/transactions/create-payment',
 }
 
 export const authApis = () => {
-    // Console log giống thầy để debug token
-    console.info(cookies.load('token')) 
     return axios.create({
-        // Tạm để URL của thầy, khi nào tạo xong Backend Thư Viện thì đổi tên SpringSaleAppV1 thành tên project của bạn nhé
-        baseURL: "http://localhost:8080/SpringSaleAppV1/api/", 
+        baseURL: `${SERVER}/api`, 
         headers: {
             'Authorization': `Bearer ${cookies.load('token')}`
         }
@@ -32,5 +43,5 @@ export const authApis = () => {
 }
 
 export default axios.create({
-    baseURL: "http://localhost:8080/SpringSaleAppV1/api/"
+    baseURL: `${SERVER}/api`
 })

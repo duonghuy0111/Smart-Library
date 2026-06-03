@@ -4,6 +4,7 @@ import cookies from 'react-cookies'
 import { MyCartContext, MyUserContext } from "../../configs/Contexts";
 import { Link } from "react-router-dom";
 import { toast } from 'react-toastify';
+import Apis, { authApis, endpoints } from "../../configs/Apis";
 
 const Cart = () => {
     const [cart, setCart] = useState(cookies.load('cart') || null);
@@ -15,20 +16,20 @@ const Cart = () => {
     const [paymentMethod, setPaymentMethod] = useState("CASH");
     const [isProcessing, setIsProcessing] = useState(false);
 
-    // Định nghĩa tỷ lệ giá các gói giống hệt bên UserAccessModal để tính lại tiền
+    // Định nghĩa tỷ lệ giá các gói
     const getPriceRate = (days) => {
         if (days === "7") return 0.2;
         if (days === "30") return 0.5;
         if (days === "90") return 0.8;
-        return 1.0; // Gói vĩnh viễn (365 ngày)
+        return 1.0; 
     };
 
-    // Hàm lấy giá gốc của học liệu dựa trên ID (Phục vụ Mock Data hiện tại)
+    // Hàm lấy giá gốc
     const getBasePriceById = (id) => {
         const docId = parseInt(id);
-        if (docId === 2) return 50000;   // Cấu trúc dữ liệu
-        if (docId === 4) return 100000;  // Nhập môn Kinh tế
-        return 0;                        // Các tài liệu miễn phí khác
+        if (docId === 2) return 50000;   
+        if (docId === 4) return 100000;  
+        return 0;                        
     };
 
     // --- HÀM XỬ LÝ THAY ĐỔI GÓI HOẶC NGÀY NGAY TRONG BẢNG ---
@@ -37,7 +38,7 @@ const Cart = () => {
 
         const basePrice = getBasePriceById(id);
         const rate = getPriceRate(newDuration);
-        const newPrice = basePrice * rate; // Tính lại giá đã giảm theo gói mới
+        const newPrice = basePrice * rate; 
 
         // Tính toán lại ngày hết hạn mới
         let newExpiry = "Không giới hạn (Vĩnh viễn)";
@@ -47,7 +48,7 @@ const Cart = () => {
             newExpiry = resultDate.toISOString().split("T")[0];
         }
 
-        // Cập nhật lại Object phần tử đó trong Giỏ hàng
+        // Cập nhật lại Object
         let updatedCart = {
             ...cart,
             [id]: {
@@ -61,7 +62,7 @@ const Cart = () => {
 
         setCart(updatedCart);
         cookies.save('cart', updatedCart);
-        cartDispatch({ "type": "UPDATE" }); // Báo hiệu Context tính lại Tổng tiền giỏ hàng công khai trên Header
+        cartDispatch({ "type": "UPDATE" }); 
         toast.success("Đã cập nhật cấu hình gói và tính lại chi phí!");
     };
 
@@ -77,24 +78,33 @@ const Cart = () => {
     const processCheckout = async () => {
         setIsProcessing(true);
         try {
-            await new Promise(resolve => setTimeout(resolve, 1200)); 
-            setCart(null); 
-            cookies.remove('cart'); 
-            cartDispatch({ "type": "PAID" }); 
-            setShowPayment(false);
-
-            if (c.totalAmount === 0) {
-                toast.success("Đăng ký gia hạn quyền mượn đọc thành công!");
-            } else {
-                if (paymentMethod === "CASH") {
-                    toast.success("Đăng ký thành công! Vui lòng hoàn tất phí gia hạn tại quầy thủ thư.");
-                } else {
-                    toast.success(`Thanh toán phí gia hạn qua ${paymentMethod} thành công! Quyền truy cập đã được kích hoạt.`);
-                }
+            // Lấy tổng tiền cần thanh toán
+            let finalAmount = 0;
+            // (Bạn viết logic tính tổng tiền từ giỏ hàng cart ở đây)
+            
+            if (paymentMethod === "VNPAY") {
+            // Gọi API tạo URL VNPay với dữ liệu thật từ Giỏ hàng
+            let res = await authApis().post(endpoints['create-payment'], {
+                // c.totalAmount là tổng tiền thật của giỏ hàng. 
+                // Dùng Math.round để đảm bảo nó luôn là số nguyên (không bị lẻ thập phân)
+                amount: Math.round(c.totalAmount).toString(), 
+                
+                // Lấy ID của cuốn sách đầu tiên trong giỏ hàng (hoặc tùy logic DB của bạn)
+                documentId: Object.keys(cart)[0] 
+            });
+            
+            window.location.href = res.data.url; 
+        } else {
+                // Xử lý thanh toán tiền mặt (Đến trực tiếp thư viện)
+                toast.success("Vui lòng đến quầy thư viện để thanh toán!");
+                setIsProcessing(false);
+                setShowPayment(false);
             }
+            
         } catch (ex) {
-            console.error("Lỗi giao dịch:", ex);
-            toast.error("Quá trình xử lý giao dịch thất bại!");
+            console.error(ex);
+            toast.error("Hệ thống đang bận, không thể tạo giao dịch!");
+        
         } finally {
             setIsProcessing(false);
         }

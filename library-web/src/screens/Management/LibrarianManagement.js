@@ -2,8 +2,11 @@ import { useState, useEffect } from "react";
 import { Table, Badge, Container, Row, Col, Card, Button, Modal, Form } from "react-bootstrap";
 import MySpinner from "../../components/MySpinner";
 import { toast } from 'react-toastify';
+import moment from "moment";
+import { authApis, endpoints } from "../../configs/Apis";
 
-// Import thư viện vẽ biểu đồ
+// 👉 IMPORT COMPONENT PHÂN TRANG VÀ BIỂU ĐỒ
+import MyPagination from "../../components/MyPagination";
 import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend } from 'chart.js';
 import { Bar } from 'react-chartjs-2';
 
@@ -13,247 +16,230 @@ const LibrarianManagement = () => {
     const [borrowList, setBorrowList] = useState([]);
     const [loading, setLoading] = useState(false);
 
-    // --- STATE CHO MODAL GIA HẠN ---
+    // 👉 STATE CHO PHÂN TRANG
+    const [page, setPage] = useState(1);
+    const [totalPages, setTotalPages] = useState(1);
+
+    // STATE CHO MODAL GIA HẠN
     const [showExtendModal, setShowExtendModal] = useState(false);
-    const [selectedId, setSelectedId] = useState(null);
-    const [extendOption, setExtendOption] = useState("7"); // 7, 14, 30 hoặc 'custom'
+    const [selectedDetailId, setSelectedDetailId] = useState(null);
+    const [extendOption, setExtendOption] = useState("7"); 
     const [customDate, setCustomDate] = useState("");
     const [reason, setReason] = useState("");
 
+    // MOCK DATA BIỂU ĐỒ
     const chartData = {
         labels: ['Tháng 1', 'Tháng 2', 'Tháng 3', 'Tháng 4', 'Tháng 5', 'Tháng 6'],
         datasets: [
             {
-                label: 'Số lượt truy cập học liệu',
-                data: [150, 230, 180, 290, 420, 310], 
-                backgroundColor: 'rgba(25, 135, 84, 0.7)', 
-                borderColor: 'rgba(25, 135, 84, 1)',
+                label: 'Số lượt mượn/truy cập học liệu',
+                data: [150, 200, 180, 220, 250, 300],
+                backgroundColor: 'rgba(54, 162, 235, 0.6)',
+                borderColor: 'rgba(54, 162, 235, 1)',
                 borderWidth: 1,
-                borderRadius: 4,
-            },
-        ],
+            }
+        ]
     };
 
-    const chartOptions = {
-        responsive: true,
-        plugins: {
-            legend: { position: 'top' },
-            title: { display: true, text: 'THỐNG KÊ LƯỢT TRUY CẬP THEO THÁNG NĂM 2026', font: { size: 16 } },
-        },
-        scales: { y: { beginAtZero: true } }
-    };
-
-    useEffect(() => {
-        const loadBorrowData = async () => {
+    const loadAllBorrows = async () => {
+        try {
             setLoading(true);
-            await new Promise(resolve => setTimeout(resolve, 600));
+            // 👉 ĐÃ SỬA: Truyền số trang xuống Backend
+            let res = await authApis().get(`${endpoints['all-borrows']}?page=${page}`);
             
-            setBorrowList([
-                { id: 1, studentName: "Nguyễn Văn A", documentName: "Giáo trình Lập trình Java", borrowDate: "2026-05-20", expiryDate: "2026-05-27", status: "ACTIVE" },
-                { id: 2, studentName: "Trần Thị B", documentName: "Cấu trúc dữ liệu và Giải thuật", borrowDate: "2026-05-15", expiryDate: "2026-05-22", status: "EXPIRED" },
-                { id: 3, studentName: "Lê Hoàng C", documentName: "Nhập môn Kinh tế học", borrowDate: "2026-05-24", expiryDate: "2026-05-31", status: "ACTIVE" },
-                { id: 4, studentName: "Phạm D", documentName: "Tài liệu chuyên ngành IT (Mua đứt)", borrowDate: "2026-05-25", expiryDate: "Không thời hạn", status: "ACTIVE" }
-            ]);
-            setLoading(false);
-        };
-        loadBorrowData();
-    }, []);
+            // 👉 ĐÃ SỬA: Bóc tách dữ liệu từ Map của Spring Boot
+            let data = res.data.content || res.data;
+            setTotalPages(res.data.totalPages || 1);
 
-    // --- MỞ MODAL GIA HẠN ---
-    const handleOpenExtend = (id) => {
-        const item = borrowList.find(b => b.id === id);
-        if (item.expiryDate === "Không thời hạn") {
-            toast.info("Học liệu này đã được mua đứt, không cần gia hạn!");
-            return;
+            let flatList = [];
+            data.forEach(borrow => {
+                borrow.borrowDetails?.forEach(detail => {
+                    flatList.push({
+                        detailId: detail.id,
+                        borrowId: borrow.id,
+                        user: borrow.user.username,
+                        documentName: detail.document?.name,
+                        borrowDate: borrow.createdDate,
+                        dueDate: detail.dueDate
+                    });
+                });
+            });
+            
+            flatList.sort((a, b) => b.detailId - a.detailId);
+            setBorrowList(flatList);
+
+        } catch (error) {
+            toast.error("Lỗi khi tải danh sách phiếu mượn!");
+        } finally {
+            setLoading(false);
         }
-        setSelectedId(id);
+    };
+
+    // 👉 ĐÃ SỬA: Load lại khi chuyển trang
+    useEffect(() => { loadAllBorrows(); }, [page]);
+
+    // --- LOGIC GIA HẠN & THU HỒI ---
+    const handleExtendClick = (detailId) => {
+        setSelectedDetailId(detailId);
         setExtendOption("7");
         setCustomDate("");
         setReason("");
         setShowExtendModal(true);
     };
 
-    // --- XỬ LÝ LƯU GIA HẠN ---
-    const processExtend = () => {
-        if (extendOption === "custom" && !customDate) {
-            toast.error("Vui lòng chọn mốc thời gian gia hạn chính xác!");
-            return;
+    const processExtend = async () => {
+        if (extendOption === 'custom' && !customDate) {
+            toast.warning("Vui lòng chọn ngày hết hạn mới!"); return;
         }
 
-        setBorrowList(prev => prev.map(item => {
-            if (item.id === selectedId) {
-                let newExpDate;
-                
-                if (extendOption === "custom") {
-                    newExpDate = customDate;
-                } else {
-                    let currentExp = new Date(item.expiryDate);
-                    // Nếu đã hết hạn trong quá khứ thì tính mốc cộng thêm từ ngày hôm nay
-                    if (currentExp < new Date()) {
-                        currentExp = new Date();
-                    }
-                    currentExp.setDate(currentExp.getDate() + parseInt(extendOption));
-                    newExpDate = currentExp.toISOString().split('T')[0];
-                }
+        let newExpiryDate = new Date();
+        if (extendOption === 'custom') {
+            newExpiryDate = new Date(customDate);
+        } else {
+            newExpiryDate.setDate(newExpiryDate.getDate() + parseInt(extendOption));
+        }
 
-                return { ...item, expiryDate: newExpDate, status: 'ACTIVE' };
+        try {
+            await authApis().post(endpoints['extend-borrow'](selectedDetailId), {
+                newDueDate: newExpiryDate.toISOString(),
+                reason: reason
+            });
+            toast.success("Xử lý gia hạn thành công!");
+            setShowExtendModal(false);
+            loadAllBorrows(); 
+        } catch (ex) {
+            toast.error("Xử lý gia hạn thất bại!");
+        }
+    };
+
+    const handleRevoke = async (detailId) => {
+        if (window.confirm("Bạn có chắc chắn muốn THU HỒI quyền truy cập học liệu này của độc giả không?")) {
+            try {
+                await authApis().delete(endpoints['revoke-borrow'](detailId));
+                toast.success("Đã thu hồi quyền truy cập thành công!");
+                loadAllBorrows(); 
+            } catch (ex) {
+                toast.error("Lỗi khi thu hồi! Vui lòng thử lại.");
             }
-            return item;
-        }));
-
-        toast.success("Gia hạn quyền truy cập thành công!");
-        setShowExtendModal(false);
-    };
-
-    // --- LOGIC XỬ LÝ THU HỒI TÀI LIỆU ---
-    const handleRevoke = (id, studentName) => {
-        if (window.confirm(`Bạn có chắc chắn muốn thu hồi quyền truy cập học liệu của sinh viên ${studentName}?`)) {
-            setBorrowList(prev => prev.map(item => 
-                item.id === id ? { ...item, status: 'EXPIRED' } : item
-            ));
-            toast.warning(`Đã thu hồi quyền truy cập của ${studentName}!`);
         }
     };
 
-    if (loading) return <div className="text-center mt-5"><MySpinner /></div>;
-
-    const selectedStudent = borrowList.find(b => b.id === selectedId);
+    const renderStatusBadge = (dueDate) => {
+        const today = new Date();
+        const due = new Date(dueDate);
+        if (due.getFullYear() > 2090) return <Badge bg="success">Sở hữu vĩnh viễn</Badge>;
+        if (today > due) return <Badge bg="danger">Quá hạn</Badge>;
+        return <Badge bg="primary">Đang mượn</Badge>;
+    };
 
     return (
         <Container className="mt-4 mb-5" style={{ maxWidth: "1200px" }}>
-            <h2 className="text-success border-bottom pb-2 mb-4">💼 QUẢN LÝ LƯỢT TRUY CẬP HỌC LIỆU</h2>
-            
-            {/* KHU VỰC HIỂN THỊ BIỂU ĐỒ */}
-            <Row className="mb-4">
-                <Col>
+            <h2 className="text-success border-bottom pb-2 mb-4">🧑‍🏫 BẢNG ĐIỀU KHIỂN THỦ THƯ</h2>
+
+            <Row className="mb-5">
+                <Col md={12}>
                     <Card className="shadow-sm border-0">
+                        <Card.Header className="bg-white">
+                            <h5 className="text-primary fw-bold mb-0">📊 Biểu đồ Tần suất mượn học liệu (6 tháng gần nhất)</h5>
+                        </Card.Header>
                         <Card.Body>
-                            <Bar data={chartData} options={chartOptions} height={80} />
+                            <div style={{ height: "300px" }}>
+                                <Bar data={chartData} options={{ maintainAspectRatio: false }} />
+                            </div>
                         </Card.Body>
                     </Card>
                 </Col>
             </Row>
 
-            {/* KHU VỰC HIỂN THỊ BẢNG DỮ LIỆU */}
-            <Row>
-                <Col>
-                    <Card className="shadow-sm border-0 overflow-hidden">
-                        <Table striped hover responsive className="mb-0 bg-white">
-                            <thead className="table-success">
-                                <tr>
-                                    <th className="text-center" style={{ width: "5%" }}>STT</th>
-                                    <th style={{ width: "18%" }}>Tên Sinh viên</th>
-                                    <th style={{ width: "25%" }}>Học liệu truy cập</th>
-                                    <th style={{ width: "12%" }}>Ngày mượn</th>
-                                    <th style={{ width: "12%" }}>Hạn truy cập</th>
-                                    <th className="text-center" style={{ width: "12%" }}>Trạng thái</th>
-                                    <th className="text-center" style={{ width: "16%" }}>Hành động</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {borrowList.length === 0 ? (
+            <h4 className="text-secondary fw-bold mb-3">📋 Danh sách Phiếu mượn cần quản lý</h4>
+            {loading ? <div className="text-center mt-5"><MySpinner /></div> : (
+                <>
+                    <Card className="shadow-sm border-0">
+                        <Card.Body className="p-0">
+                            <Table responsive hover striped className="mb-0 align-middle">
+                                <thead className="table-success text-center">
                                     <tr>
-                                        <td colSpan="7" className="text-center py-4 text-muted">Chưa có dữ liệu.</td>
+                                        <th>Mã Phiếu</th>
+                                        <th className="text-start">Độc giả</th>
+                                        <th className="text-start">Học liệu đã mượn</th>
+                                        <th>Ngày mượn</th>
+                                        <th>Hạn trả</th>
+                                        <th>Trạng thái</th>
+                                        <th>Hành động</th>
                                     </tr>
-                                ) : (
-                                    borrowList.map((item, index) => (
-                                        <tr key={item.id}>
-                                            <td className="text-center align-middle">{index + 1}</td>
-                                            <td className="fw-bold text-primary align-middle">{item.studentName}</td>
-                                            <td className="align-middle">{item.documentName}</td>
-                                            <td className="align-middle">{item.borrowDate}</td>
-                                            <td className="align-middle fw-semibold text-danger">{item.expiryDate}</td>
-                                            <td className="text-center align-middle">
-                                                {item.status === 'ACTIVE' 
-                                                    ? <Badge bg="success" className="p-2 w-100">Đang truy cập</Badge> 
-                                                    : <Badge bg="secondary" className="p-2 w-100">Đã hết hạn</Badge>}
-                                            </td>
-                                            <td className="text-center align-middle">
-                                                {item.status === 'ACTIVE' && item.expiryDate !== "Không thời hạn" && (
-                                                    <Button 
-                                                        variant="outline-danger" 
-                                                        size="sm" 
-                                                        className="fw-bold w-100 mb-1" 
-                                                        onClick={() => handleRevoke(item.id, item.studentName)}
-                                                    >
-                                                        Thu hồi
+                                </thead>
+                                <tbody>
+                                    {borrowList.length === 0 ? (
+                                        <tr><td colSpan="7" className="text-center py-4">Chưa có giao dịch mượn sách nào.</td></tr>
+                                    ) : (
+                                        borrowList.map((item) => (
+                                            <tr key={item.detailId} className="text-center">
+                                                <td className="fw-bold text-secondary">#{item.borrowId}</td>
+                                                <td className="text-start fw-bold">{item.user}</td>
+                                                <td className="text-start text-primary fw-semibold">{item.documentName}</td>
+                                                <td>{moment(item.borrowDate).format('DD/MM/YYYY')}</td>
+                                                <td className="fw-bold text-danger">
+                                                    {new Date(item.dueDate).getFullYear() > 2090 ? "Vĩnh viễn" : moment(item.dueDate).format('DD/MM/YYYY')}
+                                                </td>
+                                                <td>{renderStatusBadge(item.dueDate)}</td>
+                                                <td className="text-nowrap">
+                                                    <Button variant="outline-primary" size="sm" className="fw-bold me-2" onClick={() => handleExtendClick(item.detailId)}>
+                                                        ⏳ Gia hạn
                                                     </Button>
-                                                )}
-                                                {item.expiryDate !== "Không thời hạn" && (
-                                                    <Button 
-                                                        variant="outline-primary" 
-                                                        size="sm" 
-                                                        className="fw-bold w-100" 
-                                                        onClick={() => handleOpenExtend(item.id)}
-                                                    >
-                                                        Gia hạn truy cập
+                                                    <Button variant="outline-danger" size="sm" className="fw-bold" onClick={() => handleRevoke(item.detailId)}>
+                                                        🚫 Thu hồi
                                                     </Button>
-                                                )}
-                                            </td>
-                                        </tr>
-                                    ))
-                                )}
-                            </tbody>
-                        </Table>
+                                                </td>
+                                            </tr>
+                                        ))
+                                    )}
+                                </tbody>
+                            </Table>
+                        </Card.Body>
                     </Card>
-                </Col>
-            </Row>
 
-            {/* MODAL GIA HẠN TRUY CẬP LÝ TƯỞNG */}
+                    {/* 👉 ĐÃ SỬA: Hiển thị thanh phân trang */}
+                    <MyPagination 
+                        currentPage={page} 
+                        totalPages={totalPages} 
+                        onPageChange={setPage} 
+                    />
+                </>
+            )}
+
             <Modal show={showExtendModal} onHide={() => setShowExtendModal(false)} centered backdrop="static">
+                {/* ... (Phần Modal giữ nguyên như cũ của bạn) ... */}
                 <Modal.Header closeButton className="bg-primary text-white">
-                    <Modal.Title className="fw-bold">⏳ Gia hạn quyền truy cập</Modal.Title>
+                    <Modal.Title className="fw-bold">⏳ Xử lý gia hạn tài liệu</Modal.Title>
                 </Modal.Header>
                 <Modal.Body>
-                    {selectedStudent && (
-                        <div className="mb-3 text-muted">
-                            Đang gia hạn học liệu: <span className="fw-bold text-dark">{selectedStudent.documentName}</span> <br/>
-                            Cho sinh viên: <span className="fw-bold text-primary">{selectedStudent.studentName}</span>
-                        </div>
-                    )}
-                    
                     <Form.Group className="mb-3">
-                        <Form.Label className="fw-bold">Chọn mốc thời gian gia hạn:</Form.Label>
+                        <Form.Label className="fw-bold">Tùy chọn thời gian gia hạn (Tính từ hôm nay):</Form.Label>
                         <Form.Select value={extendOption} onChange={(e) => setExtendOption(e.target.value)}>
-                            <option value="7">Cộng thêm 1 tuần (+7 ngày)</option>
-                            <option value="14">Cộng thêm 2 tuần (+14 ngày)</option>
-                            <option value="30">Cộng thêm 1 tháng (+30 ngày)</option>
-                            <option value="custom">Tùy chọn ngày chính xác...</option>
+                            <option value="7">Gia hạn thêm 1 tuần (+7 ngày)</option>
+                            <option value="14">Gia hạn thêm 2 tuần (+14 ngày)</option>
+                            <option value="30">Gia hạn thêm 1 tháng (+30 ngày)</option>
+                            <option value="custom">Tùy chỉnh ngày cụ thể...</option>
                         </Form.Select>
                     </Form.Group>
 
-                    {extendOption === "custom" && (
+                    {extendOption === 'custom' && (
                         <Form.Group className="mb-3">
                             <Form.Label className="fw-bold text-danger">Ngày hết hạn mới:</Form.Label>
-                            <Form.Control 
-                                type="date" 
-                                value={customDate} 
-                                onChange={(e) => setCustomDate(e.target.value)} 
-                            />
+                            <Form.Control type="date" value={customDate} onChange={(e) => setCustomDate(e.target.value)} />
                         </Form.Group>
                     )}
 
                     <Form.Group className="mb-3">
                         <Form.Label className="fw-bold">Lý do gia hạn (Ghi chú):</Form.Label>
-                        <Form.Control 
-                            as="textarea" 
-                            rows={2} 
-                            placeholder="Ví dụ: Sinh viên đang làm đồ án..." 
-                            value={reason}
-                            onChange={(e) => setReason(e.target.value)}
-                        />
+                        <Form.Control as="textarea" rows={2} placeholder="Ví dụ: Sinh viên đang làm đồ án..." value={reason} onChange={(e) => setReason(e.target.value)} />
                     </Form.Group>
                 </Modal.Body>
                 <Modal.Footer>
-                    <Button variant="secondary" onClick={() => setShowExtendModal(false)}>
-                        Hủy bỏ
-                    </Button>
-                    <Button variant="primary" className="fw-bold" onClick={processExtend}>
-                        Xác nhận gia hạn
-                    </Button>
+                    <Button variant="secondary" onClick={() => setShowExtendModal(false)}>Hủy bỏ</Button>
+                    <Button variant="primary" className="fw-bold" onClick={processExtend}>Xác nhận gia hạn</Button>
                 </Modal.Footer>
             </Modal>
-
         </Container>
     );
 }
