@@ -23,7 +23,7 @@ public class DocumentServiceImpl implements DocumentService {
     private DocumentRepository documentRepository;
 
     @Override
-    public List<Document> getDocuments(Map<String, String> params) {
+    public Map<String, Object> getDocuments(Map<String, String> params) {
         return this.documentRepository.getDocuments(params);
     }
     

@@ -20,6 +20,7 @@ import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
 import jakarta.persistence.Temporal;
 import jakarta.persistence.TemporalType;
+import jakarta.persistence.Version;
 import java.io.Serializable;
 import java.math.BigDecimal;
 import java.util.Date;
@@ -62,7 +63,13 @@ public class Document implements Serializable {
 
     @Column(name = "price")
     private BigDecimal price = BigDecimal.ZERO;
+    
+    @Column(name = "capital_cost")
+    private BigDecimal capitalCost = BigDecimal.ZERO;
 
+    public BigDecimal getCapitalCost() { return capitalCost; }
+    public void setCapitalCost(BigDecimal capitalCost) { this.capitalCost = capitalCost; }
+    
     @Column(name = "cover_image", length=255)
     @JsonProperty("image") // Đổi coverImage thành image
     private String coverImage;
@@ -85,6 +92,22 @@ public class Document implements Serializable {
     @JoinColumn(name = "uploaded_by", referencedColumnName = "id")
     @ManyToOne(fetch = FetchType.EAGER)
     private User uploaderBy;
+    
+    // 👉 1. Thêm trường quản lý Xóa mềm (Soft Delete)
+    @Column(name = "is_active")
+    private boolean isActive = true; // Mặc định sách mới thêm vào là True (chưa xóa)
+
+    // 👉 2. Thêm trường quản lý Khóa lạc quan (Chống Race Condition)
+    @Version
+    @Column(name = "version")
+    private Integer version;
+
+    // ... Tạo Getter/Setter cho 2 trường này ...
+    public boolean isIsActive() { return isActive; }
+    public void setIsActive(boolean isActive) { this.isActive = isActive; }
+    
+    public Integer getVersion() { return version; }
+    public void setVersion(Integer version) { this.version = version; }
     
     public Document() {
     }
@@ -295,5 +318,16 @@ public class Document implements Serializable {
      */
     public void setUploaderBy(User uploaderBy) {
         this.uploaderBy = uploaderBy;
+    }
+    @Column(name = "borrow_count")
+    private Integer borrowCount = 0;
+
+    // Kéo xuống dưới cùng và thêm Getter / Setter:
+    public Integer getBorrowCount() {
+        return borrowCount;
+    }
+
+    public void setBorrowCount(Integer borrowCount) {
+        this.borrowCount = borrowCount;
     }
 }

@@ -1,9 +1,4 @@
-/*
- * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
- * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
- */
 package com.dt3.repository.impl;
-
 
 import com.dt3.repository.CategoryRepository;
 import jakarta.persistence.Query;
@@ -15,10 +10,6 @@ import org.springframework.orm.hibernate5.LocalSessionFactoryBean;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 
-/**
- *
- * @author Admin
- */
 @Repository
 @Transactional
 public class CategoryRepositoryImpl implements CategoryRepository {
@@ -31,7 +22,6 @@ public class CategoryRepositoryImpl implements CategoryRepository {
         Session session = this.factory.getObject().getCurrentSession();
         Query query = session.createQuery("FROM Category", Category.class);
         return query.getResultList();
-
     }
 
     @Override
@@ -40,12 +30,22 @@ public class CategoryRepositoryImpl implements CategoryRepository {
         return session.get(Category.class, id);
     }
     
-   @Override
+    @Override
     public void addCategory(Category category) {
-       // Lấy session hiện tại ra để dùng
         Session session = this.factory.getObject().getCurrentSession();
-        // Gọi session để lưu trực tiếp vào DB
-        session.saveOrUpdate(category);
+        // 👉 ĐÃ SỬA: Chuyển đổi sang chuẩn persist/merge thay cho saveOrUpdate cũ
+        if (category.getId() != null && category.getId() > 0) {
+            session.merge(category); 
+        } else {
+            session.persist(category); 
+        }
+    }
+    @Override
+    public void deleteCategory(int id) {
+        Session session = this.factory.getObject().getCurrentSession();
+        Category cat = session.get(Category.class, id);
+        if (cat != null) {
+            session.remove(cat); // Xóa khỏi Database
+        }
     }
 }
-

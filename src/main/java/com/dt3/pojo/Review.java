@@ -50,7 +50,7 @@ public class Review implements Serializable {
     @Temporal(TemporalType.TIMESTAMP)
     @JsonProperty("createdDate") // Đổi createdAt thành createdDate
     private Date createdAt; 
-
+    
     @JoinColumn(name = "document_id", referencedColumnName = "id", nullable = false)
     @ManyToOne(fetch = FetchType.EAGER)
     private Document document;

@@ -1,7 +1,3 @@
-/*
- * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
- * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
- */
 package com.dt3.controllers;
 
 import com.dt3.pojo.Document;
@@ -16,64 +12,55 @@ import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
- import com.cloudinary.Cloudinary;
- import com.cloudinary.utils.ObjectUtils;
- import java.math.BigDecimal;
- import org.springframework.web.multipart.MultipartFile;
- import com.dt3.pojo.Category;
- import com.dt3.pojo.User;
- import com.dt3.service.UserService;
- import java.security.Principal;
+import com.cloudinary.Cloudinary;
+import com.cloudinary.utils.ObjectUtils;
+import java.math.BigDecimal;
+import org.springframework.web.multipart.MultipartFile;
+import com.dt3.pojo.Category;
+import com.dt3.pojo.User;
+import com.dt3.service.UserService;
+import java.security.Principal;
 import org.springframework.web.bind.annotation.DeleteMapping;
-
-/**
- *
- * @author Admin
- */
 
 @RestController
 @RequestMapping("/api/documents")
 @CrossOrigin
 public class ApiDocumentController {
+    
     @Autowired
     private DocumentService documentService;
     
-    // API lấy danh sách tài liệu(có hỗ trợ tìm kiếm và phân trang)
+    @Autowired
+    private Cloudinary cloudinary;
+    
+    @Autowired
+    private UserService userService; 
+
     @GetMapping("/")
-    public ResponseEntity<List<Document>> getDocuments(@RequestParam Map<String, String> params){
-        List<Document> documents = this.documentService.getDocuments(params);
-        return new ResponseEntity<>(documents,HttpStatus.OK);
+    public ResponseEntity<Map<String, Object>> getDocuments(@RequestParam Map<String, String> params){
+        // 👉 ĐÃ SỬA: Đón Map dữ liệu thay vì List
+        Map<String, Object> response = this.documentService.getDocuments(params);
+        return new ResponseEntity<>(response, HttpStatus.OK);
     }
     
-    // API đếm tổng số tài liệu(Để ReactJS chia số trang 1,2,3)
     @GetMapping("/count/")
     public ResponseEntity<Long> countDocuments(@RequestParam Map<String,String> params){
         Long count = this.documentService.countDocuments(params);
         return new ResponseEntity<>(count, HttpStatus.OK);
     }
     
-    // API lấy chi tiết 1 cuốn sách khi click vào
     @GetMapping("/{id}")
     public ResponseEntity<Document> getDocumentById(@PathVariable(value = "id") int id){
         Document document = this.documentService.getDocumentById(id);
         if (document != null) {
-            return new ResponseEntity<>(document,HttpStatus.OK);
+            return new ResponseEntity<>(document, HttpStatus.OK);
         } 
-        return new ResponseEntity<>(HttpStatus.NOT_FOUND); // Báo lỗi 404 nếu không tìm thấy
+        return new ResponseEntity<>(HttpStatus.NOT_FOUND);
     }
     
-    
-    @Autowired
-    private Cloudinary cloudinary;
-    
-    @Autowired
-    private UserService userService; // Để lấy thông tin người đang upload
-
-    // Đổi consumes thành MULTIPART_FORM_DATA_VALUE
     @PostMapping(path = "/", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<?> addDocument(
             @RequestParam Map<String, String> params,
@@ -84,53 +71,73 @@ public class ApiDocumentController {
         try {
             Document doc = new Document();
             
-            // 1. Nhận các dữ liệu chữ từ ReactJS gửi lên
-            doc.setTitle(params.get("name")); // React gửi 'name', DB lưu 'title'
+            // 👉 ĐÃ SỬA: Kiểm tra an toàn dữ liệu chuỗi nhập vào
+            String name = params.get("name");
+            if (name == null || name.trim().isEmpty()) {
+                return new ResponseEntity<>("Tiêu đề tài liệu không được để trống!", HttpStatus.BAD_REQUEST);
+            }
+            doc.setTitle(name);
             doc.setAuthor(params.get("author"));
-            doc.setPublishYear(Integer.parseInt(params.get("publishYear")));
-            
-            BigDecimal price = new BigDecimal(params.get("price"));
-            doc.setPrice(price);
-            doc.setIsPremium(price.compareTo(BigDecimal.ZERO) > 0); // Tự động set Premium nếu giá > 0
             doc.setDescription(params.get("description"));
-
-            // Set Danh mục
-            Category c = new Category();
-            c.setId(Integer.parseInt(params.get("categoryId")));
-            doc.setCategory(c);
             
-            // Set Người đăng (Lấy từ Token của người đang đăng nhập)
+            // 👉 ĐÃ SỬA: Ép kiểu số nguyên và số thực an toàn tránh sập luồng hệ thống
+            String publishYearStr = params.get("publishYear");
+            int publishYear = (publishYearStr != null && !publishYearStr.trim().isEmpty()) ? Integer.parseInt(publishYearStr.trim()) : 2026;
+            doc.setPublishYear(publishYear);
+            
+            String priceStr = params.get("price");
+            BigDecimal price = (priceStr != null && !priceStr.trim().isEmpty()) ? new BigDecimal(priceStr.trim()) : BigDecimal.ZERO;
+            doc.setPrice(price);
+            doc.setIsPremium(price.compareTo(BigDecimal.ZERO) > 0); 
+
+            String categoryIdStr = params.get("categoryId");
+            if (categoryIdStr != null && !categoryIdStr.trim().isEmpty()) {
+                Category c = new Category();
+                c.setId(Integer.parseInt(categoryIdStr.trim()));
+                doc.setCategory(c);
+            } else {
+                return new ResponseEntity<>("Danh mục bắt buộc phải chọn!", HttpStatus.BAD_REQUEST);
+            }
+            
             if (principal != null) {
                 User uploader = this.userService.getUserByUsername(principal.getName());
                 doc.setUploaderBy(uploader);
             }
 
-            // 2. Xử lý Upload Ảnh bìa lên Cloudinary
-            if (image != null && !image.isEmpty()) {
-                Map res = this.cloudinary.uploader().upload(image.getBytes(), ObjectUtils.asMap("resource_type", "auto"));
-                doc.setCoverImage(res.get("secure_url").toString());
-            }
+            
+            
 
-            // 3. Xử lý Upload File nội dung (PDF/Docx) lên Cloudinary
+            // Upload Ảnh bìa
+            // 1. Upload Ảnh bìa (Luôn là image)
+            // 2. Upload File Tài liệu (Phân loại tự động & BẢO TOÀN ĐUÔI FILE)
             if (file != null && !file.isEmpty()) {
-                // "resource_type", "auto" cực kỳ quan trọng để Cloudinary nhận diện PDF
-                Map res = this.cloudinary.uploader().upload(file.getBytes(), ObjectUtils.asMap("resource_type", "auto"));
-                doc.setFileUrl(res.get("secure_url").toString());
+                String originalName = file.getOriginalFilename().toLowerCase();
+                
+                // 1. Nếu là Video hoặc Audio -> Lưu dạng "video"
+                if (originalName.endsWith(".mp4") || originalName.endsWith(".webm") || originalName.endsWith(".mp3") || originalName.endsWith(".wav")) {
+                    Map res = this.cloudinary.uploader().upload(file.getBytes(), ObjectUtils.asMap("resource_type", "video"));
+                    doc.setFileUrl(res.get("secure_url").toString());
+                } 
+                // 2. Nếu là PDF, DOCX, EPUB... -> Giữ nguyên cách "raw" cũ của bạn
+                else {
+                    Map res = this.cloudinary.uploader().upload(file.getBytes(), ObjectUtils.asMap("resource_type", "raw"));
+                    doc.setFileUrl(res.get("secure_url").toString());
+                }
             }
 
-            // 4. Lưu vào Database
             this.documentService.saveOrUpdate(doc); 
             return new ResponseEntity<>("Thêm sách thành công!", HttpStatus.CREATED);
             
+        } catch (NumberFormatException ex) {
+            return new ResponseEntity<>("Sai định dạng số ở các trường dữ liệu năm hoặc giá!", HttpStatus.BAD_REQUEST);
         } catch (Exception ex) {
-            return new ResponseEntity<>("Lỗi khi thêm sách: " + ex.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);
+            return new ResponseEntity<>("Lỗi hệ thống: " + ex.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
-    // API XÓA TÀI LIỆU
+    
     @DeleteMapping("/{id}")
     public ResponseEntity<?> deleteDocument(@PathVariable(value = "id") int id) {
         try {
-            // Giả định bạn đã có hàm deleteDocument trong DocumentService
             this.documentService.deleteDocument(id); 
             return new ResponseEntity<>("Xóa tài liệu thành công!", HttpStatus.NO_CONTENT);
         } catch (Exception ex) {
@@ -138,7 +145,6 @@ public class ApiDocumentController {
         }
     }
 
-    // API CẬP NHẬT TÀI LIỆU (Tương tự như Thêm mới, nhưng dùng id có sẵn)
     @PostMapping(path = "/{id}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<?> updateDocument(
             @PathVariable(value = "id") int id,
@@ -147,42 +153,70 @@ public class ApiDocumentController {
             @RequestParam(value = "file", required = false) MultipartFile file) {
         
         try {
-            // 1. Lấy cuốn sách cũ ra từ Database
             Document doc = this.documentService.getDocumentById(id);
             if (doc == null) {
                 return new ResponseEntity<>("Không tìm thấy tài liệu!", HttpStatus.NOT_FOUND);
             }
 
-            // 2. Cập nhật các trường Text
-            doc.setTitle(params.get("name")); 
-            doc.setAuthor(params.get("author"));
-            doc.setPublishYear(Integer.parseInt(params.get("publishYear")));
+            // 👉 ĐÃ SỬA: Cập nhật phòng thủ cục bộ, chỉ ghi đè trường có truyền và hợp lệ dữ liệu
+            if (params.containsKey("name")) {
+                String name = params.get("name");
+                if (name == null || name.trim().isEmpty()) {
+                    return new ResponseEntity<>("Tiêu đề tài liệu không được để trống!", HttpStatus.BAD_REQUEST);
+                }
+                doc.setTitle(name);
+            }
+            if (params.containsKey("author")) doc.setAuthor(params.get("author"));
+            if (params.containsKey("description")) doc.setDescription(params.get("description"));
             
-            BigDecimal price = new BigDecimal(params.get("price"));
-            doc.setPrice(price);
-            doc.setIsPremium(price.compareTo(BigDecimal.ZERO) > 0);
-            doc.setDescription(params.get("description"));
-
-            Category c = new Category();
-            c.setId(Integer.parseInt(params.get("categoryId")));
-            doc.setCategory(c);
-
-            // 3. Nếu Thủ thư có chọn Ảnh MỚI thì mới up lên Cloudinary và thay đổi
-            if (image != null && !image.isEmpty()) {
-                Map res = this.cloudinary.uploader().upload(image.getBytes(), ObjectUtils.asMap("resource_type", "auto"));
-                doc.setCoverImage(res.get("secure_url").toString());
+            if (params.containsKey("publishYear")) {
+                String publishYearStr = params.get("publishYear");
+                if (publishYearStr != null && !publishYearStr.trim().isEmpty()) {
+                    doc.setPublishYear(Integer.parseInt(publishYearStr.trim()));
+                }
+            }
+            
+            if (params.containsKey("price")) {
+                String priceStr = params.get("price");
+                if (priceStr != null && !priceStr.trim().isEmpty()) {
+                    BigDecimal price = new BigDecimal(priceStr.trim());
+                    doc.setPrice(price);
+                    doc.setIsPremium(price.compareTo(BigDecimal.ZERO) > 0);
+                }
             }
 
-            // 4. Nếu Thủ thư có chọn File nội dung MỚI thì mới thay đổi
+            if (params.containsKey("categoryId")) {
+                String categoryIdStr = params.get("categoryId");
+                if (categoryIdStr != null && !categoryIdStr.trim().isEmpty()) {
+                    Category c = new Category();
+                    c.setId(Integer.parseInt(categoryIdStr.trim()));
+                    doc.setCategory(c);
+                }
+            }
+
+            
+
+            // 2. Upload File Tài liệu (Phân loại tự động & BẢO TOÀN ĐUÔI FILE)
             if (file != null && !file.isEmpty()) {
-                Map res = this.cloudinary.uploader().upload(file.getBytes(), ObjectUtils.asMap("resource_type", "auto"));
-                doc.setFileUrl(res.get("secure_url").toString());
+                String originalName = file.getOriginalFilename().toLowerCase();
+                
+                // 1. Nếu là Video hoặc Audio -> Lưu dạng "video"
+                if (originalName.endsWith(".mp4") || originalName.endsWith(".webm") || originalName.endsWith(".mp3") || originalName.endsWith(".wav")) {
+                    Map res = this.cloudinary.uploader().upload(file.getBytes(), ObjectUtils.asMap("resource_type", "video"));
+                    doc.setFileUrl(res.get("secure_url").toString());
+                } 
+                // 2. Nếu là PDF, DOCX, EPUB... -> Giữ nguyên cách "raw" cũ của bạn
+                else {
+                    Map res = this.cloudinary.uploader().upload(file.getBytes(), ObjectUtils.asMap("resource_type", "raw"));
+                    doc.setFileUrl(res.get("secure_url").toString());
+                }
             }
 
-            // 5. Lưu lại vào Database
             this.documentService.saveOrUpdate(doc); 
             return new ResponseEntity<>("Cập nhật sách thành công!", HttpStatus.OK);
             
+        } catch (NumberFormatException ex) {
+            return new ResponseEntity<>("Dữ liệu cập nhật không đúng định dạng số!", HttpStatus.BAD_REQUEST);
         } catch (Exception ex) {
             return new ResponseEntity<>("Lỗi khi cập nhật sách: " + ex.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);
         }

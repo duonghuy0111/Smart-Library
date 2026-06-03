@@ -72,8 +72,14 @@ public class ApiUserController {
             user.setIsApproved(false);
 
             // 2. Up ảnh đại diện lên Cloudinary (Nếu có)
+            // 2. Up ảnh đại diện lên Cloudinary (Nếu có)
             if (avatar != null && !avatar.isEmpty()) {
-                Map res = this.cloudinary.uploader().upload(avatar.getBytes(), ObjectUtils.asMap("resource_type", "auto"));
+                // 👉 ÁP DỤNG THAM SỐ THÔNG MINH
+                Map res = this.cloudinary.uploader().upload(avatar.getBytes(), ObjectUtils.asMap(
+                    "resource_type", "auto",
+                    "use_filename", true,
+                    "unique_filename", true
+                ));
                 user.setAvatar(res.get("secure_url").toString());
             } else {
                 // Ảnh mặc định nếu người dùng không up

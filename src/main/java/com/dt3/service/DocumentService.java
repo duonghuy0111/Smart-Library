@@ -13,7 +13,7 @@ import java.util.Map;
  * @author Admin
  */
 public interface DocumentService {
-    List<Document> getDocuments(Map<String, String> params);
+    Map<String, Object> getDocuments(Map<String, String> params);
     Long countDocuments(Map<String,String> params);
     void saveOrUpdate(Document doc);
     Document getDocumentById(int id);

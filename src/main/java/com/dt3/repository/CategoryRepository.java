@@ -16,4 +16,5 @@ public interface CategoryRepository {
     Category getCategoryById(int id);
     
     void addCategory(Category category);
+    public void deleteCategory(int id);
 }

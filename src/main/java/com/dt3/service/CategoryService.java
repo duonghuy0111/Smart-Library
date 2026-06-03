@@ -13,6 +13,6 @@ import com.dt3.pojo.Category;
 public interface CategoryService {
     List<Category> getCategories();
     Category getCategoryById(int id);
-
+    void deleteCategory(int id);
     public void addCategory(Category category);
 }

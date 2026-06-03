@@ -31,11 +31,11 @@ public class DocumentRepositoryImpl implements DocumentRepository {
     @Autowired
     private LocalSessionFactoryBean factory;
 
-    private static final int PAGE_SIZE = 6;
+    private static final int PAGE_SIZE = 12;
 
     // Hàm TÌM KIẾM SÁCH nâng cao (Theo từ khóa, khoảng giá mượn/thế chân, chuyên ngành)
     @Override
-    public List<Document> getDocuments(Map<String, String> params) {
+    public Map<String, Object> getDocuments(Map<String, String> params) {
         Session session = this.factory.getObject().getCurrentSession();
         CriteriaBuilder builder = session.getCriteriaBuilder();
         CriteriaQuery<Document> query = builder.createQuery(Document.class);
@@ -46,22 +46,46 @@ public class DocumentRepositoryImpl implements DocumentRepository {
         List<Predicate> predicates = getDocumentPredicates(builder,root,params);
         query.where(predicates.toArray(Predicate[]::new));
         
-        // Sắp xếp học liệu mới đăng lên đầu
-        query.orderBy(builder.desc(root.get("createdAt")));
+        // Sắp xếp động theo yêu cầu của giao diện
+        if (params != null && params.containsKey("sortBy")) {
+            String sortBy = params.get("sortBy");
+            if (sortBy.equals("popularity")) {
+                query.orderBy(builder.desc(root.get("borrowCount"))); 
+            } else if (sortBy.equals("year")) {
+                query.orderBy(builder.desc(root.get("publishYear"))); 
+            } else if (sortBy.equals("name")) {
+                query.orderBy(builder.asc(root.get("title"))); 
+            } else {
+                query.orderBy(builder.desc(root.get("createdAt")));
+            }
+        } else {
+            query.orderBy(builder.desc(root.get("createdAt")));
+        }
         
         Query q = session.createQuery(query);
         
-        // Xử lý PHÂN TRANG sách
+        // 👉 ĐÃ SỬA: Xử lý PHÂN TRANG và ĐÓNG GÓI DỮ LIỆU
+        int page = 1;
         if(params != null){
             String pageStr = params.get("page");
             if(pageStr != null && !pageStr.isEmpty()){
-                int page = Integer.parseInt(pageStr);
-                int start = (page-1) * PAGE_SIZE;
-                q.setFirstResult(start);
-                q.setMaxResults(PAGE_SIZE);
+                page = Integer.parseInt(pageStr);
             }
         }
-        return q.getResultList();
+        
+        q.setFirstResult((page - 1) * PAGE_SIZE);
+        q.setMaxResults(PAGE_SIZE);
+        List<Document> content = q.getResultList(); // Lấy 6 cuốn sách của trang hiện tại
+        
+        // Tính tổng số trang bằng cách gọi lại hàm countDocuments của bạn
+        long totalRecords = this.countDocuments(params);
+        int totalPages = (int) Math.ceil((double) totalRecords / PAGE_SIZE);
+        
+        Map<String, Object> result = new java.util.HashMap<>();
+        result.put("content", content); // Mảng sách
+        result.put("totalPages", totalPages); // Tổng số trang
+        
+        return result;
     }
     @Override
     public Long countDocuments(Map<String,String>params){
@@ -80,7 +104,7 @@ public class DocumentRepositoryImpl implements DocumentRepository {
 
     private List<Predicate> getDocumentPredicates(CriteriaBuilder builder, Root<Document> root, Map<String,String> params){
         List<Predicate> predicates = new ArrayList<>();
-        
+        predicates.add(builder.isTrue(root.get("isActive")));
         if(params != null){
             // 1. Tìm theo từ khóa (tiêu đề hoặc tác giả) - Từ thanh Search Header
             String kw = params.get("kw");
@@ -134,13 +158,13 @@ public class DocumentRepositoryImpl implements DocumentRepository {
     }
 
     @Override
-    // Xóa sách khỏi thư viện
     public void deleteDocument(int id) {
         Session session = this.factory.getObject().getCurrentSession();
         Document doc = this.getDocumentById(id);
         if (doc != null) {
-            session.remove(doc); // Xóa sách
-
+            // Thay vì dùng session.remove(doc) gây mất dữ liệu lịch sử
+            doc.setIsActive(false); // Đánh dấu là đã xóa
+            session.merge(doc);     // Cập nhật lại vào Database
         }
     }
 }

@@ -35,8 +35,13 @@ public class ApiSecurityConfigs {
                 .requestMatchers(HttpMethod.POST, "/api/documents/**", "/api/categories/**").hasAnyRole("ADMIN", "LIBRARIAN")
                 .requestMatchers(HttpMethod.PUT, "/api/documents/**", "/api/categories/**").hasAnyRole("ADMIN", "LIBRARIAN")
                 .requestMatchers(HttpMethod.DELETE, "/api/documents/**", "/api/categories/**").hasAnyRole("ADMIN", "LIBRARIAN")
-                .requestMatchers(HttpMethod.POST, "/api/reviews/**", "/api/transactions/**", "/api/histories/**").authenticated()
-                .requestMatchers(HttpMethod.GET, "/api/**").permitAll()
+                
+                // 👉 SỬA/THÊM DÒNG NÀY: Bắt buộc đăng nhập với các API thao tác dữ liệu cá nhân
+                // 👉 Chỉ yêu cầu đăng nhập khi ĐĂNG đánh giá (POST)
+                .requestMatchers(HttpMethod.POST, "/api/reviews/**", "/api/transactions/**", "/api/borrows/**").authenticated()
+
+                // 👉 Đảm bảo dòng này nằm ở dưới cùng để mở cửa cho mọi người XEM đánh giá (GET)
+                .requestMatchers(HttpMethod.GET, "/api/**").permitAll() // Những API GET còn lại (lấy danh sách sách, danh mục...) thì được public
                 .anyRequest().authenticated() 
             )
             // 👉 THÊM DÒNG NÀY: Bắt Spring Security phải quét qua Token Filter trước khi kiểm tra quyền
