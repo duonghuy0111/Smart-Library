@@ -10,6 +10,5 @@ public interface UserService extends UserDetailsService {
     void registerUser(User user); // Hàm xử lý đăng ký
     List<User> getUsers(String role);
     public void approveUser(int id);
-    boolean checkEmailExist(String email);
-    boolean checkPhoneExist(String phone);
+  
 }   
