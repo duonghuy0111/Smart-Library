@@ -1,0 +1,69 @@
+<!doctype html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title>Cập nhật Học Liệu</title>
+    <th:block th:replace="~{base :: css}"></th:block>
+</head>
+<body>
+    <div th:replace="~{base :: header}"></div>
+
+    <section class="container mt-4">
+        <h2 class="text-center text-info mb-4">CẬP NHẬT HỌC LIỆU</h2>
+        
+        <form method="post" th:object="${document}" th:action="@{/admin/documents}" enctype="multipart/form-data" class="col-md-8 mx-auto shadow p-4 bg-light rounded">
+            
+            <div class="mb-3">
+                <label for="title" class="form-label fw-bold">Tên tài liệu / Sách</label>
+                <input type="text" class="form-control" id="title" th:field="*{title}" required />
+            </div>
+
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label for="author" class="form-label fw-bold">Tác giả</label>
+                    <input type="text" class="form-control" id="author" th:field="*{author}" required />
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label for="publishYear" class="form-label fw-bold">Năm xuất bản</label>
+                    <input type="number" class="form-control" id="publishYear" th:field="*{publishYear}" required />
+                </div>
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label fw-bold">Chuyên ngành</label>
+                <select class="form-select" th:field="*{category.id}">
+                    <option th:each="c: ${categories}" th:value="${c.id}" th:text="${c.name}"></option>
+                </select>
+            </div>
+            
+            <div class="mb-3">
+                <label class="form-label fw-bold">Định dạng file</label>
+                <select class="form-select" th:field="*{fileType}">
+                    <option value="PDF">Tài liệu PDF</option>
+                    <option value="VIDEO">Bài giảng Video</option>
+                </select>
+            </div>
+
+            <div class="mb-3">
+                <label for="coverFile" class="form-label fw-bold">Tải lên Ảnh Bìa</label>
+                <input type="file" class="form-control" id="coverFile" th:field="*{coverFile}" accept="image/*" />
+            </div>
+
+            <div class="mb-3">
+                <label for="contentFile" class="form-label fw-bold">Tải lên Nội dung (PDF/Video)</label>
+                <input type="file" class="form-control" id="contentFile" th:field="*{contentFile}" />
+            </div>
+            
+            <div class="text-center mt-4">
+                <button type="submit" class="btn btn-success px-5">Lưu Thông Tin</button>
+                <a th:href="@{/admin/documents}" class="btn btn-secondary px-5">Hủy</a>
+            </div>
+            
+            <input type="hidden" th:field="*{id}" />
+            <input type="hidden" th:field="*{coverImage}" />
+            <input type="hidden" th:field="*{fileUrl}" />
+        </form>
+    </section>
+
+    <div th:replace="~{base :: footer}"></div>
+</body>
+</html>

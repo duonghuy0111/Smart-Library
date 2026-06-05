@@ -62,14 +62,21 @@ public class ApiUserController {
             user.setFullName(fullName.trim());
             
             // Xử lý Role 
+            // Xử lý Role và Duyệt tài khoản
             String role = params.get("role");
             if (role != null && !role.isEmpty()) {
-                user.setRole("ROLE_" + role);
+                user.setRole("ROLE_" + role.toUpperCase());
+                
+                // Nếu đăng ký là Thủ thư -> Ép chờ duyệt
+                if (role.equalsIgnoreCase("LIBRARIAN")) {
+                    user.setIsApproved(false);
+                } else {
+                    user.setIsApproved(true); // Các role khác (như Giảng viên) nếu có thì duyệt luôn
+                }
             } else {
                 user.setRole("ROLE_STUDENT");
+                user.setIsApproved(true); // Học viên thì tự động được duyệt
             }
-            
-            user.setIsApproved(false);
 
             // 2. Up ảnh đại diện lên Cloudinary (Nếu có)
             // 2. Up ảnh đại diện lên Cloudinary (Nếu có)
@@ -105,6 +112,14 @@ public class ApiUserController {
 
             if (!passwordEncoder.matches(loginRequest.getPassword(), user.getPassword())) {
                 return new ResponseEntity<>("Tài khoản hoặc mật khẩu không chính xác!", HttpStatus.UNAUTHORIZED);
+            }
+            if (user.getRole().equals("ROLE_LIBRARIAN") && (user.getIsApproved() == null || !user.getIsApproved())) {
+                Map<String, String> errorRes = new HashMap<>();
+                errorRes.put("status", "pending_approval");
+                errorRes.put("message", "Tài khoản của bạn đang chờ Admin duyệt. Vui lòng quay lại sau!");
+                
+                // Trả về mã 403 (Forbidden - Cấm truy cập)
+                return new ResponseEntity<>(errorRes, HttpStatus.FORBIDDEN); 
             }
 
             String token = this.jwtService.generateToken(user.getUsername());

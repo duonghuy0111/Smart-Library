@@ -41,14 +41,31 @@ public class SpringSecurityConfigs {
         http.securityMatcher("/admin/**", "/", "/login")
             .csrf(c -> c.disable())
             .authorizeHttpRequests((requests) -> requests
-                .requestMatchers("/", "/admin").hasRole("ADMIN")
+                // 1. Mở cửa tự do cho trang chủ và trang hiển thị form đăng nhập
+                .requestMatchers("/", "/admin/login").permitAll()
+                
+                // 2. 👉 SỬA LẠI: Khóa TOÀN BỘ các trang có chữ /admin/ ở đầu (dashboard, documents, users...)
+                // Bắt buộc phải đăng nhập và có quyền ADMIN mới được vào
+                .requestMatchers("/admin/**").hasRole("ADMIN")
+                
                 .anyRequest().permitAll()
-        ).formLogin(form -> form.loginPage("/admin/login") // Đường dẫn tới trang đăng nhập
-                .loginProcessingUrl("/login") // Đường dẫn xử lý POST
-                .defaultSuccessUrl("/", true) // Chuyển hướng khi thành công
-                .failureUrl("/admin/login?error=true") // Chuyển hướng khi thất bại
+        ).formLogin(form -> form
+                .loginPage("/admin/login") 
+                
+                // 👉 SỬA LẠI: Khớp tuyệt đối với th:action="@{/admin/login}" trong form HTML
+                .loginProcessingUrl("/admin/login") 
+                
+                // 👉 SỬA LẠI: Đăng nhập thành công thì đá thẳng vào Dashboard thay vì trang chủ "/"
+                .defaultSuccessUrl("/admin/dashboard", true) 
+                
+                .failureUrl("/admin/login?error=true") 
                 .permitAll()
-        ).logout((logout) -> logout.logoutSuccessUrl("/admin/login").permitAll());
+        ).logout((logout) -> logout
+                // 👉 THÊM: Bắt chính xác link th:href="@{/admin/logout}" trên thanh Header
+                .logoutUrl("/admin/logout") 
+                .logoutSuccessUrl("/admin/login?logout=true")
+                .permitAll()
+        );
 
         return http.build();
     }

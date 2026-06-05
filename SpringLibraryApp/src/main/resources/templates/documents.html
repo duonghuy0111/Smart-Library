@@ -1,0 +1,116 @@
+<!--<!doctype html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title>Quản lý Học Liệu</title>
+    <th:block th:replace="~{base :: css}"></th:block>
+</head>
+<body>
+    <div th:replace="~{base :: header}"></div>
+
+    <section class="container mt-4">
+        <h2 class="text-info mb-4">Danh Sách Học Liệu</h2>
+        <div class="mb-3">
+            <a th:href="@{/admin/documents/add}" class="btn btn-primary">Thêm tài liệu mới</a>
+        </div>
+        
+        <table class="table table-bordered table-striped">
+            <thead class="table-dark">
+                <tr>
+                    <th>Ảnh Bìa</th>
+                    <th>Tên Tài Liệu</th>
+                    <th>Tác Giả</th>
+                    <th>Năm XB</th>
+                    <th>Định Dạng</th>
+                    <th>Hành Động</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr th:each="doc: ${documents}">
+                    <td>
+                        <img th:src="${doc.coverImage}" width="80" alt="Bìa sách"/>
+                    </td>
+                    <td th:text="${doc.title}"></td>
+                    <td th:text="${doc.author}"></td>
+                    <td th:text="${doc.publishYear}"></td>
+                    <td>
+                        <span class="badge bg-secondary" th:text="${doc.fileType}"></span>
+                    </td>
+                    <td>
+                        <a th:href="@{/admin/documents/} + ${doc.id}" class='btn btn-warning btn-sm'>Sửa</a>
+                        <button class="btn btn-danger btn-sm" th:onclick="'deleteDocument(\'' + @{/api/documents/} + ${doc.id} + '\')'">Xóa</button>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </section>
+
+    <div th:replace="~{base :: footer}"></div>
+</body>
+</html>-->
+
+
+<!doctype html>
+<html xmlns:th="http://www.thymeleaf.org">
+    <head>
+    <th:block th:replace="~{base :: head}"></th:block>
+</head>
+<body>
+    <div th:replace="~{base :: header}"></div>
+
+    <section class="container mt-4">
+        <h2 class="text-info mb-4">Danh Sách Học Liệu</h2>
+        <div class="mb-3">
+            <a th:href="@{/admin/documents/add}" class="btn btn-primary">Thêm tài liệu mới</a>
+        </div>
+
+        <table class="table table-bordered table-striped">
+            <thead class="table-dark">
+                <tr>
+                    <th>Ảnh Bìa</th>
+                    <th>Tên Tài Liệu</th>
+                    <th>Tác Giả</th>
+                    <th>Năm XB</th>
+                    <th>Định Dạng</th>
+                    <th>Hành Động</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr th:each="doc: ${documents}">
+                    <td>
+                        <img th:src="${doc.coverImage}" width="80" alt="Bìa sách"/>
+                    </td>
+                    <td th:text="${doc.title}"></td>
+                    <td th:text="${doc.author}"></td>
+                    <td th:text="${doc.publishYear}"></td>
+                    <td>
+                        <span class="badge bg-secondary" th:text="${doc.fileType}"></span>
+                    </td>
+                    <td>
+                        <a th:href="@{/admin/documents/} + ${doc.id}" class='btn btn-warning btn-sm'>Sửa</a>
+                        <a th:href="@{/admin/documents/delete/{id}(id=${doc.id})}" 
+                           class="btn btn-danger btn-sm" 
+                           onclick="return confirm('Bạn chắc chắn muốn xóa tài liệu này?')">Xóa</a>
+                    </td>
+                </tr>
+            </tbody>
+        </table>    
+    </section>
+
+    <div th:replace="~{base :: footer}"></div>
+    <script>
+        function deleteDocument(url) {
+            if (confirm("Bạn chắc chắn muốn xóa tài liệu này?")) {
+                fetch(url, {
+                    method: "delete"
+                }).then(res => {
+                    if (res.status === 204 || res.status === 200) {
+                        location.reload();
+                    } else {
+                        alert("Xóa tài liệu thất bại!");
+                    }
+                }).catch(err => alert("Lỗi kết nối!"));
+            }
+        }
+    </script>
+</body>
+</html>

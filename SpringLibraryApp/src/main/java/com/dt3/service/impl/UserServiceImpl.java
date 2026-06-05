@@ -65,4 +65,13 @@ public class UserServiceImpl implements UserService {
         
         return new org.springframework.security.core.userdetails.User(user.getUsername(), user.getPassword(), authorities);
     }
+    @Override
+    public void approveUser(int id) {
+    User user = this.userRepository.getUserById(id);
+    if (user != null) {
+        user.setIsApproved(true);
+        // Gọi thẳng xuống Repo, không đi qua bước băm mật khẩu
+        this.userRepository.saveOrUpdate(user); 
+    }
+}
 }

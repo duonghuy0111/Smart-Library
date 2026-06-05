@@ -1,0 +1,37 @@
+<!doctype html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title>Quản Lý Lịch Sử Mượn Tài Liệu</title>
+    <th:block th:replace="~{base :: css}"></th:block>
+</head>
+<body>
+    <div th:replace="~{base :: header}"></div>
+    <section class="container mt-4">
+        <h2 class="text-warning mb-4">Danh Sách Học Viên Đang Mượn Tài Liệu</h2>
+        <table class="table table-hover table-bordered shadow-sm">
+            <thead class="table-warning">
+                <tr>
+                    <th>Người Mượn</th>
+                    <th>Tên Tài Liệu / Học Liệu</th>
+                    <th>Ngày Mượn</th>
+                    <th>Hạn Trả</th>
+                    <th>Trạng Thái</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr th:each="b : ${borrowList}">
+                    <td th:text="${b.user.fullName}"></td>
+                    <td th:text="${b.document.title}"></td>
+                    <td th:text="${#dates.format(b.borrowDate, 'dd/MM/yyyy')}"></td>
+                    <td th:text="${#dates.format(b.dueDate, 'dd/MM/yyyy')}"></td>
+                    <td>
+                        <span th:if="${b.returnDate == null}" class="badge bg-danger">Đang mượn</span>
+                        <span th:if="${b.returnDate != null}" class="badge bg-success">Đã trả</span>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </section>
+    <div th:replace="~{base :: footer}"></div>
+</body>
+</html>
