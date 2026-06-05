@@ -203,15 +203,21 @@ const DocumentList = () => {
                                         )}
                                         
                                         {/* Nút Gia hạn (Ẩn đi nếu sách Miễn phí hoặc đã mua Vĩnh viễn) */}
-                                        {!isFree && !isLifetime && (
-                                            <Button 
-                                                variant={userAccess.isActive ? "outline-warning" : "danger"} 
-                                                size="sm" 
-                                                className="fw-bold" 
-                                                onClick={() => handleAccessClick(p)}
-                                            >
-                                                {userAccess.isActive ? "⏳ Gia hạn thêm" : "🔑 Gia hạn truy cập"}
-                                            </Button>
+                                        {!isFree && (
+                                            isLifetime ? (
+                                                <Button variant="success" size="sm" className="fw-bold" disabled>
+                                                    ✔️ Đã sở hữu vĩnh viễn
+                                                </Button>
+                                            ) : (
+                                                <Button 
+                                                    variant={userAccess.isActive ? "outline-warning" : "danger"} 
+                                                    size="sm" 
+                                                    className="fw-bold" 
+                                                    onClick={() => handleAccessClick(p)}
+                                                >
+                                                    {userAccess.isActive ? "⏳ Gia hạn thêm" : "🔑 Gia hạn truy cập"}
+                                                </Button>
+                                            )
                                         )}
 
                                         <Button variant={isAddedToCompare ? "primary" : "outline-primary"} size="sm" className="fw-bold" onClick={() => handleToggleCompare(p)}>

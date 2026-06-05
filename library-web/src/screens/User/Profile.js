@@ -178,10 +178,14 @@ const Profile = () => {
                                                                     </Button>
                                                                 ) : null}
 
-                                                                {!isFree && !isLifetime && (
-                                                                    <Button variant={isActive ? "outline-warning" : "danger"} size="sm" className="fw-bold" onClick={() => handleAccessClick(doc)}>
-                                                                        {isActive ? "⏳ Mua thêm hạn" : "🔑 Mua lại quyền"}
-                                                                    </Button>
+                                                                {!isFree && (
+                                                                    isLifetime ? (
+                                                                        <Badge bg="success" className="p-2 w-100 fs-6">Sở hữu vĩnh viễn</Badge>
+                                                                    ) : (
+                                                                        <Button variant={isActive ? "outline-warning" : "danger"} size="sm" className="fw-bold" onClick={() => handleAccessClick(doc)}>
+                                                                            {isActive ? "⏳ Mua thêm hạn" : "🔑 Mua lại quyền"}
+                                                                        </Button>
+                                                                    )
                                                                 )}
                                                             </div>
                                                         </Card.Body>

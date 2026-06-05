@@ -147,15 +147,21 @@ const Home = () => {
                                             )}
                                             
                                             {/* Nút Gia hạn (Ẩn nếu Miễn phí hoặc Vĩnh viễn) */}
-                                            {!isFree && !isLifetime && (
-                                                <Button 
-                                                    variant={userAccess.isActive ? "outline-warning" : "danger"} 
-                                                    size="sm" 
-                                                    className="fw-bold" 
-                                                    onClick={() => handleAccessClick(p)}
-                                                >
-                                                    {userAccess.isActive ? "⏳ Gia hạn thêm" : "🔑 Mua quyền truy cập"}
-                                                </Button>
+                                            {!isFree && (
+                                                isLifetime ? (
+                                                    <Button variant="success" size="sm" className="fw-bold" disabled>
+                                                        ✔️ Đã sở hữu vĩnh viễn
+                                                    </Button>
+                                                ) : (
+                                                    <Button 
+                                                        variant={userAccess.isActive ? "outline-warning" : "danger"} 
+                                                        size="sm" 
+                                                        className="fw-bold" 
+                                                        onClick={() => handleAccessClick(p)}
+                                                    >
+                                                        {userAccess.isActive ? "⏳ Gia hạn thêm" : "🔑 Mua quyền truy cập"}
+                                                    </Button>
+                                                )
                                             )}
                                         </div>
                                     </Card.Body>

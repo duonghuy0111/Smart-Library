@@ -68,7 +68,22 @@ const Login = () => {
 
             } catch (ex) {
                 console.error(ex);
-                setErr("Tài khoản hoặc mật khẩu không chính xác!");
+                
+                if (ex.response && ex.response.status === 403) {
+                    // 👉 KIỂM TRA & TRÍCH XUẤT CHUỖI AN TOÀN
+                    let errorMsg = "";
+                    if (typeof ex.response.data === 'string') {
+                        errorMsg = ex.response.data; // Nếu backend trả về thẳng chuỗi
+                    } else if (ex.response.data && ex.response.data.message) {
+                        errorMsg = ex.response.data.message; // Nếu backend trả về Object có key message
+                    } else {
+                        errorMsg = "Tài khoản của bạn đang chờ Admin phê duyệt! Vui lòng quay lại sau.";
+                    }
+                    
+                    setErr(errorMsg);
+                } else {
+                    setErr("Tài khoản hoặc mật khẩu không chính xác!");
+                }
             } finally {
                 setLoading(false);
             }

@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Modal, Button, Form, Row, Col, Card, Badge } from "react-bootstrap";
+import { Modal, Button, Form, Row, Col, Card } from "react-bootstrap";
 import { toast } from "react-toastify";
 
 const UserAccessModal = ({ show, onHide, document, onConfirm }) => {
@@ -13,10 +13,10 @@ const UserAccessModal = ({ show, onHide, document, onConfirm }) => {
 
     // 2. Định nghĩa cấu hình các gói thời gian và hệ số nhân giá
     const pricePackages = [
-        { days: 7, label: "Gói 1 tuần (7 ngày)", priceRate: 0.2 },     // 20% giá gốc của học liệu
-        { days: 30, label: "Gói 1 tháng (30 ngày)", priceRate: 0.5 },   // 50% giá gốc của học liệu
-        { days: 90, label: "Gói 1 học kỳ (90 ngày)", priceRate: 0.8 },  // 80% giá gốc của học liệu
-        { days: 365, label: "Sở hữu vĩnh viễn", priceRate: 1.0 }       // 100% giá gốc mua đứt
+        { days: 7, label: "Gói 1 tuần (7 ngày)", priceRate: 0.2 },     
+        { days: 30, label: "Gói 1 tháng (30 ngày)", priceRate: 0.5 },   
+        { days: 90, label: "Gói 1 học kỳ (90 ngày)", priceRate: 0.8 },  
+        { days: 365, label: "Sở hữu vĩnh viễn", priceRate: 1.0 }       
     ];
 
     // 3. Tự động tính toán ngày hết hạn và giá tiền khi người dùng thay đổi lựa chọn
@@ -32,7 +32,7 @@ const UserAccessModal = ({ show, onHide, document, onConfirm }) => {
             setFinalPrice(calculatedPrice);
         }
 
-        // Tính ngày hết hạn dự kiến từ ngày bắt đầu
+        // Tính ngày hết hạn hiển thị cho người dùng (Chỉ để nhìn trên UI)
         if (selectedPackage === "365") {
             setEstimatedExpiry("Không giới hạn (Vĩnh viễn)");
         } else if (startDate) {
@@ -48,13 +48,29 @@ const UserAccessModal = ({ show, onHide, document, onConfirm }) => {
             return;
         }
 
+        let expiryDateToSend;
+        let durationDaysToSend;
+
+        // XỬ LÝ DỮ LIỆU ĐỂ GỬI XUỐNG BACKEND
+        if (selectedPackage === "365") {
+            // Nếu là vĩnh viễn: Ép cứng hạn là năm 2100 chuẩn ISO 8601
+            expiryDateToSend = new Date("2100-01-01T00:00:00Z").toISOString();
+            durationDaysToSend = 99999; 
+        } else {
+            // Nếu là gói thường: Cộng ngày và ép chuẩn ISO 8601
+            let resultDate = new Date(startDate);
+            resultDate.setDate(resultDate.getDate() + parseInt(selectedPackage));
+            expiryDateToSend = resultDate.toISOString(); 
+            durationDaysToSend = parseInt(selectedPackage);
+        }
+
         // Truyền toàn bộ dữ liệu gói đã chọn ngược lại cho trang xử lý thanh toán
         onConfirm({
             documentId: document.id,
-            documentName: document.name,
-            startDate: startDate,
-            durationDays: selectedPackage,
-            expiryDate: estimatedExpiry,
+            documentName: document.title || document.name, // Lấy dự phòng 2 trường
+            startDate: new Date(startDate).toISOString(), // Chuẩn hóa luôn startDate
+            durationDays: durationDaysToSend,
+            expiryDate: expiryDateToSend,
             price: finalPrice
         });
         
@@ -70,7 +86,7 @@ const UserAccessModal = ({ show, onHide, document, onConfirm }) => {
             </Modal.Header>
             <Modal.Body className="p-4">
                 <div className="mb-4 text-center">
-                    <h5 className="fw-bold text-primary mb-1">{document.name}</h5>
+                    <h5 className="fw-bold text-primary mb-1">{document.title || document.name}</h5>
                     <small className="text-muted">Tác giả: {document.author}</small>
                 </div>
 
@@ -79,7 +95,7 @@ const UserAccessModal = ({ show, onHide, document, onConfirm }) => {
                     <Form.Label className="fw-bold">📅 Chọn ngày kích hoạt truy cập:</Form.Label>
                     <Form.Control 
                         type="date" 
-                        min={today} // Không cho phép chọn ngày trong quá khứ
+                        min={today} 
                         value={startDate} 
                         onChange={(e) => setStartDate(e.target.value)} 
                         className="border-success"
@@ -94,7 +110,6 @@ const UserAccessModal = ({ show, onHide, document, onConfirm }) => {
                     <Form.Label className="fw-bold">⏱️ Chọn gói thời hạn & Phí bản quyền:</Form.Label>
                     <Row className="g-2">
                         {pricePackages.map((pkg) => {
-                            // Tính giá hiển thị nháp cho từng gói
                             const pkgPrice = document.price === 0 ? 0 : document.price * pkg.priceRate;
                             return (
                                 <Col xs={12} key={pkg.days}>

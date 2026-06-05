@@ -5,18 +5,15 @@ import { toast } from 'react-toastify';
 import moment from "moment";
 import { authApis, endpoints } from "../../configs/Apis";
 
-// 👉 IMPORT COMPONENT PHÂN TRANG VÀ BIỂU ĐỒ
+// 👉 THÊM: Import Chart thật và Phân trang
 import MyPagination from "../../components/MyPagination";
-import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend } from 'chart.js';
-import { Bar } from 'react-chartjs-2';
-
-ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
+import UsageStatsChart from "../../components/UsageStatsChart"; 
 
 const LibrarianManagement = () => {
     const [borrowList, setBorrowList] = useState([]);
     const [loading, setLoading] = useState(false);
 
-    // 👉 STATE CHO PHÂN TRANG
+    // STATE CHO PHÂN TRANG
     const [page, setPage] = useState(1);
     const [totalPages, setTotalPages] = useState(1);
 
@@ -27,27 +24,11 @@ const LibrarianManagement = () => {
     const [customDate, setCustomDate] = useState("");
     const [reason, setReason] = useState("");
 
-    // MOCK DATA BIỂU ĐỒ
-    const chartData = {
-        labels: ['Tháng 1', 'Tháng 2', 'Tháng 3', 'Tháng 4', 'Tháng 5', 'Tháng 6'],
-        datasets: [
-            {
-                label: 'Số lượt mượn/truy cập học liệu',
-                data: [150, 200, 180, 220, 250, 300],
-                backgroundColor: 'rgba(54, 162, 235, 0.6)',
-                borderColor: 'rgba(54, 162, 235, 1)',
-                borderWidth: 1,
-            }
-        ]
-    };
-
     const loadAllBorrows = async () => {
         try {
             setLoading(true);
-            // 👉 ĐÃ SỬA: Truyền số trang xuống Backend
             let res = await authApis().get(`${endpoints['all-borrows']}?page=${page}`);
             
-            // 👉 ĐÃ SỬA: Bóc tách dữ liệu từ Map của Spring Boot
             let data = res.data.content || res.data;
             setTotalPages(res.data.totalPages || 1);
 
@@ -58,7 +39,7 @@ const LibrarianManagement = () => {
                         detailId: detail.id,
                         borrowId: borrow.id,
                         user: borrow.user.username,
-                        documentName: detail.document?.name,
+                        documentName: detail.document?.name || detail.document?.title,
                         borrowDate: borrow.createdDate,
                         dueDate: detail.dueDate
                     });
@@ -75,7 +56,6 @@ const LibrarianManagement = () => {
         }
     };
 
-    // 👉 ĐÃ SỬA: Load lại khi chuyển trang
     useEffect(() => { loadAllBorrows(); }, [page]);
 
     // --- LOGIC GIA HẠN & THU HỒI ---
@@ -88,8 +68,16 @@ const LibrarianManagement = () => {
     };
 
     const processExtend = async () => {
-        if (extendOption === 'custom' && !customDate) {
-            toast.warning("Vui lòng chọn ngày hết hạn mới!"); return;
+        // 👉 ĐÃ THÊM: Chặn logic chọn ngày trong quá khứ
+        if (extendOption === 'custom') {
+            if (!customDate) {
+                toast.warning("Vui lòng chọn ngày hết hạn mới!"); 
+                return;
+            }
+            if (new Date(customDate) <= new Date()) {
+                toast.error("Ngày gia hạn phải lớn hơn ngày hiện tại!"); 
+                return;
+            }
         }
 
         let newExpiryDate = new Date();
@@ -136,18 +124,10 @@ const LibrarianManagement = () => {
         <Container className="mt-4 mb-5" style={{ maxWidth: "1200px" }}>
             <h2 className="text-success border-bottom pb-2 mb-4">🧑‍🏫 BẢNG ĐIỀU KHIỂN THỦ THƯ</h2>
 
+            {/* 👉 ĐÃ SỬA: Thay thế Biểu đồ Mock bằng Component Dữ liệu thật */}
             <Row className="mb-5">
                 <Col md={12}>
-                    <Card className="shadow-sm border-0">
-                        <Card.Header className="bg-white">
-                            <h5 className="text-primary fw-bold mb-0">📊 Biểu đồ Tần suất mượn học liệu (6 tháng gần nhất)</h5>
-                        </Card.Header>
-                        <Card.Body>
-                            <div style={{ height: "300px" }}>
-                                <Bar data={chartData} options={{ maintainAspectRatio: false }} />
-                            </div>
-                        </Card.Body>
-                    </Card>
+                    <UsageStatsChart />
                 </Col>
             </Row>
 
@@ -198,7 +178,6 @@ const LibrarianManagement = () => {
                         </Card.Body>
                     </Card>
 
-                    {/* 👉 ĐÃ SỬA: Hiển thị thanh phân trang */}
                     <MyPagination 
                         currentPage={page} 
                         totalPages={totalPages} 
@@ -208,7 +187,6 @@ const LibrarianManagement = () => {
             )}
 
             <Modal show={showExtendModal} onHide={() => setShowExtendModal(false)} centered backdrop="static">
-                {/* ... (Phần Modal giữ nguyên như cũ của bạn) ... */}
                 <Modal.Header closeButton className="bg-primary text-white">
                     <Modal.Title className="fw-bold">⏳ Xử lý gia hạn tài liệu</Modal.Title>
                 </Modal.Header>
