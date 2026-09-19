@@ -1,0 +1,4 @@
+vnpay.tmn_code=your_tmn_code
+vnpay.hash_secret=your_hash_secret
+vnpay.url=https://sandbox.vnpayment.vn/paymentv2/vpcpay.html
+vnpay.return_url=http://localhost:3000/payment-result

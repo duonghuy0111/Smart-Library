@@ -1,0 +1,26 @@
+# Build output
+target/
+
+# IDE
+.idea/
+*.iml
+.classpath
+.project
+.settings/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Environment / secrets
+.env
+.env.*
+!.env.example
+
+src/main/resources/databases.properties
+src/main/resources/cloudinary.properties
+src/main/resources/vnpay.properties
+src/main/resources/jwt.properties

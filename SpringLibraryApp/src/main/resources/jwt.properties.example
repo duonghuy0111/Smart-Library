@@ -1,0 +1,2 @@
+jwt.secret=your_jwt_secret
+jwt.expire_time=86400000
