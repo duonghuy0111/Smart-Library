@@ -4,6 +4,7 @@ import com.dt3.dto.KpiDTO;
 import com.dt3.dto.RoiDTO;
 import com.dt3.repository.StatsRepository;
 import com.dt3.service.StatsService;
+import java.time.Year;
 import java.util.List;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -18,6 +19,7 @@ public class StatsServiceImpl implements StatsService {
     public KpiDTO getGeneralKPIs() {
         return this.statsRepository.getGeneralKPIs();
     }
+
     @Override
     public List<Object[]> getDocumentCountByCategory() {
         return this.statsRepository.getDocumentCountByCategory();
@@ -36,5 +38,30 @@ public class StatsServiceImpl implements StatsService {
     @Override
     public List<Object[]> getBorrowFrequency(String viewMode, int year) {
         return this.statsRepository.getBorrowFrequency(viewMode, year);
+    }
+
+    // Admin compatibility methods
+
+    @Override
+    public List<Object[]> countDocumentsByCategory() {
+        return this.statsRepository.getDocumentCountByCategory();
+    }
+
+    @Override
+    public List<Object[]> getBorrowStats(String period) {
+        int currentYear = Year.now().getValue();
+
+        if ("YEARS".equalsIgnoreCase(period)) {
+            return this.statsRepository.getBorrowFrequency("YEARS", currentYear);
+        }
+
+        return this.statsRepository.getBorrowFrequency("MONTHS", currentYear);
+    }
+
+    @Override
+    public List<Object[]> getRevenueStats(String period) {
+        int currentYear = Year.now().getValue();
+
+        return this.statsRepository.getRevenueByYear(currentYear);
     }
 }

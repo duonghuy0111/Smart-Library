@@ -1,8 +1,12 @@
 package com.dt3.service.impl;
 
+import com.dt3.pojo.Borrow;
 import com.dt3.repository.BorrowRepository;
 import com.dt3.service.BorrowService;
+
+import java.util.List;
 import java.util.Map;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -31,6 +35,15 @@ public class BorrowServiceImpl implements BorrowService {
         return this.borrowRepository.getAllBorrows(params);
     }
 
+        @Override
+    public Long countAll() {
+        return this.borrowRepository.countAll();
+    }
+
+    @Override
+    public List<Borrow> getByUserId(Integer userId) {
+        return this.borrowRepository.getByUserId(userId);
+    }
     @Override
     public void extendDueDate(int detailId, String newDateStr) {
         this.borrowRepository.extendDueDate(detailId, newDateStr);

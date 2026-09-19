@@ -40,15 +40,20 @@ public class ApiDocumentController {
     private UserService userService; 
 
     @GetMapping("/")
-    public ResponseEntity<Map<String, Object>> getDocuments(@RequestParam Map<String, String> params){
-        // 👉 ĐÃ SỬA: Đón Map dữ liệu thay vì List
-        Map<String, Object> response = this.documentService.getDocuments(params);
+    public ResponseEntity<Map<String, Object>> getDocuments(
+            @RequestParam Map<String, Object> params) {
+
+        Map<String, Object> response =
+                this.documentService.getDocuments(params);
+
         return new ResponseEntity<>(response, HttpStatus.OK);
     }
-    
     @GetMapping("/count/")
-    public ResponseEntity<Long> countDocuments(@RequestParam Map<String,String> params){
+    public ResponseEntity<Long> countDocuments(
+            @RequestParam Map<String, Object> params) {
+
         Long count = this.documentService.countDocuments(params);
+
         return new ResponseEntity<>(count, HttpStatus.OK);
     }
     

@@ -5,18 +5,22 @@ import java.util.List;
 import java.util.Map;
 
 public interface DocumentRepository {
-    // Lấy danh sách tài liệu có bộ lọc tìm kiếm và phân trang
-    // Đổi kiểu trả về thành Map để chứa cả Data và Tổng số trang
-    Map<String, Object> getDocuments(Map<String, String> params);    // Đếm tổng số tài liệu theo bộ lọc(phục vụ hiển thị số trang ở frontend)
-    Long countDocuments(Map<String, String>params);
-    //Thêm hoặc cập nhật tài liệu
+
+    Map<String, Object> getDocuments(Map<String, Object> params);
+
+    Long countDocuments(Map<String, Object> params);
+
+    Long countAll();
+
+    List<Document> getTopBorrowed(int limit);
+
     void saveOrUpdate(Document doc);
-    //Tìm tài liệu theo Id cụ thể
+
     Document getDocumentById(int id);
-    //Xóa tài liệu
+
     void deleteDocument(int id);
-    
-    // Bổ sung
+
+    void restoreDocument(int id);
+
     List<Document> searchDocuments(String keyword, String sortBy);
-    
 }

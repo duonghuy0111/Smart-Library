@@ -34,9 +34,15 @@ public class HomeController {
     }
     
     @RequestMapping("/")
-    public String index(Model model, @RequestParam Map<String, String> params) {
-        
-        model.addAttribute("documents", this.documentService.getDocuments(params));
+    public String index(
+            Model model,
+            @RequestParam Map<String, Object> params) {
+
+        model.addAttribute(
+                "documents",
+                this.documentService.getDocuments(params)
+        );
+
         return "index";
     }
     

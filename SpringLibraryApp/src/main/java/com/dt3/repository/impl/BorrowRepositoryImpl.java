@@ -129,6 +129,37 @@ public class BorrowRepositoryImpl implements BorrowRepository {
         result.put("totalPages", totalPages);
         return result;
     }
+    @Override
+    public Long countAll() {
+        Session session = this.factory.getObject().getCurrentSession();
+
+        Query<Long> query = session.createQuery(
+                "SELECT COUNT(b.id) FROM Borrow b",
+                Long.class
+        );
+
+        return query.uniqueResult();
+    }
+
+    @Override
+    public List<Borrow> getByUserId(Integer userId) {
+        Session session = this.factory.getObject().getCurrentSession();
+
+        if (userId == null) {
+            return java.util.Collections.emptyList();
+        }
+
+        Query<Borrow> query = session.createQuery(
+                "FROM Borrow b " +
+                "WHERE b.user.id = :userId " +
+                "ORDER BY b.createdDate DESC",
+                Borrow.class
+        );
+
+        query.setParameter("userId", userId);
+
+        return query.getResultList();
+    }
 
     // 👉 ĐÃ THÊM MỚI: Cập nhật hạn trả sách
     @Override

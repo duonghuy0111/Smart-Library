@@ -27,6 +27,30 @@ public class CategoryServiceImpl implements CategoryService{
     public void addCategory(Category category) {
          this.categoryRepository.addCategory(category);
     }
+    @Override
+    public List<Category> getAllCategories() {
+        return this.categoryRepository.getCategories();
+    }
+
+    @Override
+    public void addOrUpdate(Category category) {
+        if (category == null) {
+            return;
+        }
+
+        if (category.getId() != null && category.getId() > 0) {
+            this.categoryRepository.updateCategory(category);
+        } else {
+            this.categoryRepository.addCategory(category);
+        }
+    }
+
+    @Override
+    public void delete(Integer id) {
+        if (id != null) {
+            this.categoryRepository.deleteCategory(id);
+        }
+    }
 
     // 👉 ĐÃ THÊM MỚI: Xóa danh mục
     @Override

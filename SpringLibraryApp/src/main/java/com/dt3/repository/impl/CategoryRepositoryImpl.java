@@ -48,4 +48,9 @@ public class CategoryRepositoryImpl implements CategoryRepository {
             session.remove(cat); // Xóa khỏi Database
         }
     }
+    @Override
+public void updateCategory(Category category) {
+    Session session = this.factory.getObject().getCurrentSession();
+    session.merge(category);
+}
 }

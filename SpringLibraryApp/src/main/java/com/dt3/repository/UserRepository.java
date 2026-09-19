@@ -1,18 +1,29 @@
 package com.dt3.repository;
 
 import com.dt3.pojo.User;
+
 import java.util.List;
+import java.util.Map;
 
 public interface UserRepository {
-    // Tìm người dùng bằng username 
+
     User getUserByUsername(String username);
-    // Tìm người dùng bằng ID
+
     User getUserById(int id);
-    // Lưu thông tin (đăng ký mới hoặc admin duyệt/cập nhật quyền)
+
     void saveOrUpdate(User user);
-    // Lấy danh sách tài khoản theo vai trò (để admin dễ quản lý)
+
     List<User> getUsers(String role);
-    
-    // Bổ sung
+
     Long countUsers(String role);
+
+    List<User> getUsers(Map<String, Object> params);
+
+    Long countUsers(Map<String, Object> params);
+
+    List<User> getRecentUsers(int limit);
+
+    List<User> getPendingLibrarians();
+
+    void deleteUser(int id);
 }
